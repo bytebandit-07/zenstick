@@ -38,7 +38,6 @@ export default function App() {
       const label = appWindow.label;
       setWindowLabel(label);
 
-      // 🌟 UI FIX: Widget ko perfectly transparent rakhein aur Dashboard pe wallpaper lagayein
       if (label === 'widget') {
         document.documentElement.style.background = 'transparent';
         document.body.style.background = 'transparent';
@@ -47,7 +46,6 @@ export default function App() {
         document.body.className = 'wallpaper-bg';
       }
 
-      // Agar yeh widget hai, toh latest active ID uthao
       if (label === 'widget') {
         const savedActiveId = localStorage.getItem('zenstick:active_id');
         if (savedActiveId && savedActiveId !== activeNoteId) {
@@ -61,33 +59,58 @@ export default function App() {
     return () => { document.body.className = ''; };
   }, [activeNoteId, setActiveNoteId]);
 
-  // 2. CROSS-WINDOW STORAGE LISTENER (Fixed Reload Bug)
+  // 2. CROSS-WINDOW STORAGE LISTENER (Now with Full Content Sync 🚀)
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      // Sirf active ID sync karein
+      // Sync active note switch
       if (e.key === 'zenstick:active_id' && e.newValue) {
         setActiveNoteId(e.newValue);
       }
+      
+      // 🌟 LIVE SYNC: Content updates from the other window
+      if (e.key === 'zenstick:sync_content' && e.newValue) {
+        const payload = JSON.parse(e.newValue);
+        updateNoteContent(payload.id, payload.content);
+      }
+      
+      // 🌟 LIVE SYNC: Title updates from the other window
+      if (e.key === 'zenstick:sync_title' && e.newValue) {
+        const payload = JSON.parse(e.newValue);
+        updateNoteTitle(payload.id, payload.title);
+      }
     };
+    
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [setActiveNoteId]);
+  }, [setActiveNoteId, updateNoteContent, updateNoteTitle]);
 
-  // 3. FALLBACK: Agar active note phir bhi nahi mili toh pehli select kar lo
+  // 3. FALLBACK: Auto-select first note if none active
   useEffect(() => {
     if (windowLabel === 'widget' && !activeNote && notes.length > 0) {
       setActiveNoteId(notes[0].id);
     }
   }, [windowLabel, activeNote, notes, setActiveNoteId]);
 
+  // 🌟 ENHANCED HANDLERS: Broadcast changes to localStorage
   const handleUpdateContent = (content: string) => {
     if (!activeNote) return;
     updateNoteContent(activeNote.id, content);
     setIsSaving(true);
     setTimeout(() => setIsSaving(false), 1800);
+
+    // Tell the other window to update instantly
+    localStorage.setItem('zenstick:sync_content', JSON.stringify({ id: activeNote.id, content, ts: Date.now() }));
   };
 
-  // FLOATING WIDGET OPEN FUNCTION (With State Persistence)
+  const handleUpdateTitle = (title: string) => {
+    if (!activeNote) return;
+    updateNoteTitle(activeNote.id, title);
+    
+    // Tell the other window to update instantly
+    localStorage.setItem('zenstick:sync_title', JSON.stringify({ id: activeNote.id, title, ts: Date.now() }));
+  };
+
+  // FLOATING WIDGET OPEN FUNCTION
   const openFloatingWidget = async () => {
     try {
       if (activeNoteId) {
@@ -102,7 +125,7 @@ export default function App() {
   const colors = activeNote ? NOTE_COLORS[activeNote.color] : NOTE_COLORS.violet;
 
   // ==========================================
-  // RENDER 1: WIDGET WINDOW (Transparent & Borderless)
+  // RENDER 1: WIDGET WINDOW (Transparent)
   // ==========================================
   if (windowLabel === 'widget') {
     if (!activeNote) {
@@ -115,13 +138,12 @@ export default function App() {
     }
     
     return (
-      // 🌟 UI FIX: Removed extra padding/margins to eliminate border gaps
       <div className="w-screen h-screen overflow-hidden bg-transparent">
         <ZenWidget
           key={activeNote.id}
           note={activeNote}
           onUpdateContent={handleUpdateContent}
-          onUpdateTitle={title => updateNoteTitle(activeNote.id, title)}
+          onUpdateTitle={handleUpdateTitle}
           onRestoreSnapshot={snap => restoreSnapshot(activeNote.id, snap)}
           onDeleteSnapshot={id => deleteSnapshot(activeNote.id, id)}
           onTogglePin={() => togglePin(activeNote.id)}
@@ -204,7 +226,7 @@ export default function App() {
                 key={activeNote.id}
                 note={activeNote}
                 onUpdateContent={handleUpdateContent}
-                onUpdateTitle={title => updateNoteTitle(activeNote.id, title)}
+                onUpdateTitle={handleUpdateTitle}
                 onRestoreSnapshot={snap => restoreSnapshot(activeNote.id, snap)}
                 onDeleteSnapshot={id => deleteSnapshot(activeNote.id, id)}
                 onTogglePin={() => togglePin(activeNote.id)}
