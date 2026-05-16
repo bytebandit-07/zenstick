@@ -49,16 +49,18 @@ export default function NotesSidebar({
             >
               <Plus className="w-4 h-4" />
             </button>
+            
+            {/* 🌟 SPONTANEOUS COLOR PICKER FIXED GRID */}
             {showColorPicker && (
-              <div className="absolute right-0 top-full mt-1 bg-black/60 backdrop-blur-xl border border-white/10 rounded-xl p-2 z-50 animate-fade-in">
-                <p className="text-[9px] text-white/40 uppercase tracking-widest mb-1.5 px-1">Pick color</p>
-                <div className="grid grid-cols-3 gap-1.5">
+              <div className="absolute right-0 top-full mt-1.5 w-36 bg-black/85 backdrop-blur-2xl border border-white/10 rounded-xl p-2.5 z-50 animate-fade-in shadow-2xl">
+                <p className="text-[9px] text-white/40 uppercase tracking-widest mb-2 px-0.5">Pick color</p>
+                <div className="grid grid-cols-3 gap-2">
                   {(Object.entries(NOTE_COLORS) as [NoteColor, typeof NOTE_COLORS[NoteColor]][]).map(([key, val]) => (
                     <button
                       key={key}
                       onClick={() => { onAddNote(key); setShowColorPicker(false); }}
                       title={val.label}
-                      className="w-8 h-8 rounded-lg border-2 transition-all hover:scale-110"
+                      className="w-8 h-8 rounded-lg border-2 transition-all hover:scale-110 flex-shrink-0"
                       style={{ background: val.bg, borderColor: val.accent }}
                     />
                   ))}
@@ -108,7 +110,7 @@ export default function NotesSidebar({
                       className="w-2 h-2 rounded-full flex-shrink-0"
                       style={{ background: colors.accent }}
                     />
-                    <p className="text-xs font-semibold text-white/90 truncate">{note.title}</p>
+                    <p className="text-xs font-semibold text-white/90 truncate">{note.title || 'Untitled Note'}</p>
                     {note.isPinned && (
                       <Pin className="w-2.5 h-2.5 text-white/40 fill-current flex-shrink-0" />
                     )}
