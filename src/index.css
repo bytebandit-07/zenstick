@@ -1,0 +1,257 @@
+@import "tailwindcss";
+
+* {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* ===== TIPTAP EDITOR STYLES ===== */
+.tiptap-editor .ProseMirror {
+  outline: none;
+  min-height: 200px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 14px;
+  line-height: 1.7;
+  caret-color: #a78bfa;
+}
+
+.tiptap-editor .ProseMirror p {
+  margin: 0 0 6px 0;
+}
+
+.tiptap-editor .ProseMirror p:last-child {
+  margin-bottom: 0;
+}
+
+.tiptap-editor .ProseMirror h1 {
+  font-size: 1.4em;
+  font-weight: 700;
+  color: #fff;
+  margin: 8px 0 4px 0;
+  letter-spacing: -0.02em;
+}
+
+.tiptap-editor .ProseMirror h2 {
+  font-size: 1.15em;
+  font-weight: 600;
+  color: rgba(255,255,255,0.95);
+  margin: 6px 0 3px 0;
+}
+
+.tiptap-editor .ProseMirror h3 {
+  font-size: 1em;
+  font-weight: 600;
+  color: rgba(255,255,255,0.9);
+  margin: 4px 0 2px 0;
+}
+
+.tiptap-editor .ProseMirror strong {
+  color: #fff;
+  font-weight: 700;
+}
+
+.tiptap-editor .ProseMirror em {
+  color: rgba(255,255,255,0.85);
+  font-style: italic;
+}
+
+.tiptap-editor .ProseMirror ul,
+.tiptap-editor .ProseMirror ol {
+  margin: 4px 0;
+  padding-left: 20px;
+}
+
+.tiptap-editor .ProseMirror ul li {
+  list-style-type: disc;
+  margin: 2px 0;
+}
+
+.tiptap-editor .ProseMirror ol li {
+  list-style-type: decimal;
+  margin: 2px 0;
+}
+
+/* Task list (checkboxes) */
+.tiptap-editor .ProseMirror ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.tiptap-editor .ProseMirror ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 3px 0;
+}
+
+.tiptap-editor .ProseMirror ul[data-type="taskList"] li > label {
+  display: flex;
+  align-items: center;
+  margin-top: 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.tiptap-editor .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.tiptap-editor .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"]:checked {
+  background: #8b5cf6;
+  border-color: #8b5cf6;
+}
+
+.tiptap-editor .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 1px;
+  width: 5px;
+  height: 8px;
+  border: 2px solid white;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+
+.tiptap-editor .ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div p {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+.tiptap-editor .ProseMirror ul[data-type="taskList"] li > div {
+  flex: 1;
+}
+
+/* Placeholder */
+.tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+  float: left;
+  height: 0;
+  font-style: italic;
+}
+
+/* Blockquote */
+.tiptap-editor .ProseMirror blockquote {
+  border-left: 3px solid rgba(167, 139, 250, 0.6);
+  margin: 6px 0;
+  padding-left: 12px;
+  color: rgba(255,255,255,0.7);
+  font-style: italic;
+}
+
+/* Code */
+.tiptap-editor .ProseMirror code {
+  background: rgba(0,0,0,0.3);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.88em;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: #c4b5fd;
+}
+
+/* ===== SCROLLBAR STYLE ===== */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);   opacity: 1; }
+}
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-slide-in-right { animation: slideInRight 0.25s cubic-bezier(0.16,1,0.3,1) forwards; }
+.animate-slide-in-left  { animation: slideInLeft  0.25s cubic-bezier(0.16,1,0.3,1) forwards; }
+.animate-fade-in        { animation: fadeIn 0.2s ease forwards; }
+.animate-pulse-soft     { animation: pulse-soft 2s ease-in-out infinite; }
+
+/* ===== NOTE CARDS IN HISTORY ===== */
+.history-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.history-card:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(167,139,250,0.4);
+}
+.history-card.active {
+  background: rgba(139,92,246,0.15);
+  border-color: rgba(167,139,250,0.5);
+}
+
+/* ===== TOOLTIP ===== */
+.tooltip {
+  position: relative;
+}
+.tooltip::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.8);
+  color: #fff;
+  font-size: 10px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.tooltip:hover::after {
+  opacity: 1;
+}
+
+/* ===== WALLPAPER BACKGROUND (for demo) ===== */
+.wallpaper-bg {
+  background: 
+    radial-gradient(ellipse at 20% 50%, rgba(120, 40, 200, 0.3) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(40, 100, 220, 0.3) 0%, transparent 50%),
+    radial-gradient(ellipse at 60% 80%, rgba(20, 160, 140, 0.2) 0%, transparent 50%),
+    linear-gradient(135deg, #0f0c29 0%, #1a1a2e 40%, #16213e 70%, #0f3460 100%);
+}
