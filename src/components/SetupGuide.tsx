@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // 🌟 Added useEffect here
 import {
   Terminal, CheckCircle2, Circle, ChevronDown, ChevronUp,
   Copy, ExternalLink, Rocket, Package, Code2, Cpu
@@ -259,7 +259,16 @@ function StepCard({ step, isCompleted, onToggle }: StepCardProps) {
 }
 
 export default function SetupGuide() {
-  const [completed, setCompleted] = useState<Set<number>>(new Set());
+  // 🌟 Initialize from localStorage instead of memory
+  const [completed, setCompleted] = useState<Set<number>>(() => {
+    const saved = localStorage.getItem('zenstick:setup_progress');
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
+
+  // 🌟 Sync to localStorage whenever 'completed' Set changes
+  useEffect(() => {
+    localStorage.setItem('zenstick:setup_progress', JSON.stringify(Array.from(completed)));
+  }, [completed]);
 
   const toggleStep = (id: number) => {
     setCompleted(prev => {
@@ -271,7 +280,6 @@ export default function SetupGuide() {
   };
 
   const progress = Math.round((completed.size / STEPS.length) * 100);
-
   const phases = [...new Set(STEPS.map(s => s.phase))];
 
   return (
