@@ -221,7 +221,7 @@ export default function ZenWidget({
         )}
       </div>
 
-      {/* 🌟 PREMIUM FOOTER SIGNATURE */}
+      {/* PREMIUM FOOTER SIGNATURE */}
       <div 
         className="flex-shrink-0 flex items-center justify-between px-4 py-2 border-t border-white/5 bg-black/20 hover:bg-black/40 transition-colors cursor-move"
         style={{ WebkitAppRegion: 'drag' } as any}

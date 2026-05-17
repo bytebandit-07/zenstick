@@ -174,9 +174,8 @@ export default function App() {
 
   const colors = activeNote ? NOTE_COLORS[activeNote.color] : NOTE_COLORS.violet;
 
-  // ==========================================
+  
   // RENDER 1: WIDGET WINDOW MODE
-  // ==========================================
   if (windowLabel === 'widget') {
     if (!activeNote) {
       return (
@@ -206,10 +205,9 @@ export default function App() {
     );
   }
 
-  // ==========================================
+  
   // RENDER 2: DASHBOARD FULL MODE
-  // ==========================================
-  return (
+    return (
     <div className="wallpaper-bg min-h-screen w-full overflow-hidden relative">
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute w-[600px] h-[600px] rounded-full opacity-20 blur-3xl" style={{ background: colors.accent, top: '-100px', right: '-100px', animation: 'blob 8s ease-in-out infinite alternate' }} />
@@ -320,7 +318,7 @@ export default function App() {
         }
       `}</style>
 
-      {/* 🌟 WATERMARK / SIGNATURE */}
+      {/* WATERMARK / SIGNATURE */}
       <div className="absolute bottom-4 right-6 pointer-events-none z-0">
         <p className="text-[10px] font-medium text-white/20 tracking-widest uppercase">
           Crafted by <span className="text-white/40 font-bold">Talal</span>

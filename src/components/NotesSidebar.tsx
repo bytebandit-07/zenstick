@@ -50,7 +50,7 @@ export default function NotesSidebar({
               <Plus className="w-4 h-4" />
             </button>
             
-            {/* 🌟 SPONTANEOUS COLOR PICKER FIXED GRID */}
+            {/* SPONTANEOUS COLOR PICKER FIXED GRID */}
             {showColorPicker && (
               <div className="absolute right-0 top-full mt-1.5 w-36 bg-black/85 backdrop-blur-2xl border border-white/10 rounded-xl p-2.5 z-50 animate-fade-in shadow-2xl">
                 <p className="text-[9px] text-white/40 uppercase tracking-widest mb-2 px-0.5">Pick color</p>
