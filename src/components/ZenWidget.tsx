@@ -6,7 +6,7 @@ import TaskItem from '@tiptap/extension-task-item';
 import Placeholder from '@tiptap/extension-placeholder';
 import {
   Clock, List, MoreVertical, Pin, Trash2,
-  CheckCircle, StickyNote, Minus,
+  CheckCircle, StickyNote, Minus, Plus,
   Maximize2, Minimize2
 } from 'lucide-react';
 import { Note, NOTE_COLORS, Snapshot } from '../types';
@@ -22,6 +22,7 @@ interface ZenWidgetProps {
   onTogglePin: () => void;
   onDelete: () => void;
   onShowNotes: () => void;
+  onAddNote: () => void;
   isSaving: boolean;
 }
 
@@ -36,6 +37,7 @@ export default function ZenWidget({
   onTogglePin,
   onDelete,
   onShowNotes,
+  onAddNote,
   isSaving,
 }: ZenWidgetProps) {
   const [panel, setPanel] = useState<Panel>('none');
@@ -48,12 +50,17 @@ export default function ZenWidget({
   const titleInputRef = useRef<HTMLInputElement>(null);
   const colors = NOTE_COLORS[note.color];
 
-  // 1. Sync Title
+  const isReady = useRef(false);
+
   useEffect(() => {
     setTitleValue(note.title);
   }, [note.id, note.title]);
 
-  // 2. Initialize Editor FIRST
+  useEffect(() => {
+    isReady.current = true;
+    return () => { isReady.current = false; };
+  }, []);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
@@ -65,7 +72,14 @@ export default function ZenWidget({
     ],
     content: note.currentContent,
     onUpdate: ({ editor }) => {
-      onUpdateContent(editor.getHTML());
+      if (!isReady.current) return; 
+      
+      const newHtml = editor.getHTML();
+      
+      if (newHtml === note.currentContent || (newHtml === '<p></p>' && note.currentContent === '')) {
+        return;
+      }
+      onUpdateContent(newHtml);
     },
     onFocus: () => setToolbarVisible(true),
     onBlur: () => setTimeout(() => setToolbarVisible(false), 150),
@@ -74,12 +88,20 @@ export default function ZenWidget({
     },
   });
 
-  // 3. Sync Editor Content AFTER Editor is initialized
   useEffect(() => {
-    if (editor && note.currentContent !== editor.getHTML()) {
-      editor.commands.setContent(note.currentContent, { emitUpdate: false });
+    if (!editor || editor.isDestroyed || editor.isFocused) return;
+    
+    const incoming = note.currentContent || '';
+    const current = editor.getHTML();
+
+    if (incoming !== current) {
+      queueMicrotask(() => {
+        if (!editor.isDestroyed && note.currentContent === incoming) {
+          editor.commands.setContent(incoming, { emitUpdate: false });
+        }
+      });
     }
-  }, [note.id, note.currentContent, editor]); // ✨ PERFECT SYNC ARRAY
+  }, [note.id, note.currentContent, editor]);
 
   const handleRestoreSnapshot = useCallback((snapshot: Snapshot) => {
     onRestoreSnapshot(snapshot);
@@ -126,7 +148,6 @@ export default function ZenWidget({
         <div className="flex items-center gap-2 relative">
           <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: colors.accent }} />
 
-          {/* 🛑 THE KILL-SWITCH INPUT */}
           <input
             ref={titleInputRef}
             value={titleValue}
@@ -150,10 +171,22 @@ export default function ZenWidget({
           />
 
           <div className="flex items-center gap-0.5 flex-shrink-0 relative z-50">
-            <button onClick={onShowNotes} className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/10"><StickyNote className="w-3.5 h-3.5" /></button>
-            <button onClick={() => togglePanel('history')} className={`w-7 h-7 flex items-center justify-center rounded-md transition-all ${panel === 'history' ? 'text-violet-300 bg-violet-500/25' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}><Clock className="w-3.5 h-3.5" /></button>
+            <button onClick={onAddNote} className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/10" title="New Note">
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+
+            <button onClick={onShowNotes} className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/10" title="All notes">
+              <StickyNote className="w-3.5 h-3.5" />
+            </button>
+            
+            <button onClick={() => togglePanel('history')} className={`w-7 h-7 flex items-center justify-center rounded-md transition-all ${panel === 'history' ? 'text-violet-300 bg-violet-500/25' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`} title="Version history">
+              <Clock className="w-3.5 h-3.5" />
+            </button>
+            
             <div className="relative">
-              <button onClick={() => togglePanel('menu')} className={`w-7 h-7 flex items-center justify-center rounded-md transition-all ${panel === 'menu' ? 'text-white bg-white/15' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}><MoreVertical className="w-3.5 h-3.5" /></button>
+              <button onClick={() => togglePanel('menu')} className={`w-7 h-7 flex items-center justify-center rounded-md transition-all ${panel === 'menu' ? 'text-white bg-white/15' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`} title="More options">
+                <MoreVertical className="w-3.5 h-3.5" />
+              </button>
               {panel === 'menu' && (
                 <div className="absolute right-0 top-full mt-1 w-44 bg-[#1a1a2e]/95 backdrop-blur-2xl border border-white/10 rounded-xl p-1 z-[60] shadow-2xl">
                   <MenuItem icon={<Pin className="w-3.5 h-3.5" />} label={note.isPinned ? 'Unpin' : 'Pin'} onClick={() => { onTogglePin(); setPanel('none'); }} />
@@ -163,14 +196,14 @@ export default function ZenWidget({
                 </div>
               )}
             </div>
-            <button onClick={() => setIsMinimized(true)} className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/10"><Minus className="w-3.5 h-3.5" /></button>
+            <button onClick={() => setIsMinimized(true)} className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/10" title="Minimize"><Minus className="w-3.5 h-3.5" /></button>
           </div>
         </div>
       </div>
 
       <div className="flex-shrink-0 h-px mx-4 bg-white/5" />
 
-      {/* CONTENT AREA */}
+      {/* ===== CONTENT AREA ===== */}
       <div className="flex-1 overflow-hidden relative">
         {panel === 'history' ? (
           <div className="absolute inset-0 px-4 py-3">
@@ -188,13 +221,13 @@ export default function ZenWidget({
         )}
       </div>
 
-      {/* 🚀 PURE CSS FOOTER DRAG REGION - (No data-tauri-drag-region attribute) */}
+      {/* 🌟 PREMIUM FOOTER SIGNATURE */}
       <div 
         className="flex-shrink-0 flex items-center justify-between px-4 py-2 border-t border-white/5 bg-black/20 hover:bg-black/40 transition-colors cursor-move"
         style={{ WebkitAppRegion: 'drag' } as any}
       >
         <span className="text-[10px] text-white/20 uppercase tracking-widest font-medium pointer-events-none">
-          {isSaving ? 'Saving...' : 'ZenStick'}
+          {isSaving ? 'Saving...' : 'ZenStick by Talal'}
         </span>
         <div className="flex items-center justify-center pointer-events-none">
           <div className="w-12 h-1 bg-white/20 rounded-full" />

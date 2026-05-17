@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { invoke } from '@tauri-apps/api/core';
+import { emit, listen } from '@tauri-apps/api/event';
 import { useNotes } from './hooks/useNotes';
 import ZenWidget from './components/ZenWidget';
 import NotesSidebar from './components/NotesSidebar';
@@ -31,6 +32,8 @@ export default function App() {
   const [isSaving, setIsSaving] = useState(false);
   const [windowLabel, setWindowLabel] = useState<string>('');
 
+  const isIncomingSyncRef = useRef(false);
+
   // 1. WINDOW DETECTION & INITIAL SYNC
   useEffect(() => {
     try {
@@ -49,6 +52,7 @@ export default function App() {
       if (label === 'widget') {
         const savedActiveId = localStorage.getItem('zenstick:active_id');
         if (savedActiveId && savedActiveId !== activeNoteId) {
+          isIncomingSyncRef.current = true;
           setActiveNoteId(savedActiveId);
         }
       }
@@ -59,58 +63,104 @@ export default function App() {
     return () => { document.body.className = ''; };
   }, [activeNoteId, setActiveNoteId]);
 
-  // 2. CROSS-WINDOW STORAGE LISTENER (Now with Full Content Sync 🚀)
+  // 2. TAURI NATIVE LISTENERS
   useEffect(() => {
+    let isMounted = true;
+    const unlistenRegistry: (() => void)[] = [];
+
+    const setupListeners = async () => {
+      const unContent = await listen('sync_content', (event: any) => {
+        if (!isMounted) return;
+        if (event.payload.origin !== windowLabel) {
+          updateNoteContent(event.payload.id, event.payload.content);
+        }
+      });
+      if (!isMounted) unContent(); else unlistenRegistry.push(unContent);
+
+      const unTitle = await listen('sync_title', (event: any) => {
+        if (!isMounted) return;
+        if (event.payload.origin !== windowLabel) {
+          updateNoteTitle(event.payload.id, event.payload.title);
+        }
+      });
+      if (!isMounted) unTitle(); else unlistenRegistry.push(unTitle);
+
+      const unActiveId = await listen('sync_active_id', (event: any) => {
+        if (!isMounted) return;
+        if (event.payload.origin !== windowLabel) {
+          isIncomingSyncRef.current = true; 
+          setActiveNoteId(event.payload.id);
+        }
+      });
+      if (!isMounted) unActiveId(); else unlistenRegistry.push(unActiveId);
+
+      const unReqAdd = await listen('request_add_note', (event: any) => {
+        if (!isMounted) return;
+        if (windowLabel !== 'widget') {
+          addNote(event.payload.color); 
+        }
+      });
+      if (!isMounted) unReqAdd(); else unlistenRegistry.push(unReqAdd);
+    };
+
+    setupListeners();
+
     const handleStorageChange = (e: StorageEvent) => {
-      // Sync active note switch
-      if (e.key === 'zenstick:active_id' && e.newValue) {
+      if (e.key === 'zenstick:active_id' && e.newValue && e.newValue !== activeNoteId) {
+        isIncomingSyncRef.current = true;
         setActiveNoteId(e.newValue);
       }
-      
-      // 🌟 LIVE SYNC: Content updates from the other window
-      if (e.key === 'zenstick:sync_content' && e.newValue) {
-        const payload = JSON.parse(e.newValue);
-        updateNoteContent(payload.id, payload.content);
-      }
-      
-      // 🌟 LIVE SYNC: Title updates from the other window
-      if (e.key === 'zenstick:sync_title' && e.newValue) {
-        const payload = JSON.parse(e.newValue);
-        updateNoteTitle(payload.id, payload.title);
-      }
     };
-    
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [setActiveNoteId, updateNoteContent, updateNoteTitle]);
 
-  // 3. FALLBACK: Auto-select first note if none active
+    return () => {
+      isMounted = false;
+      unlistenRegistry.forEach(unsub => unsub());
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [setActiveNoteId, updateNoteContent, updateNoteTitle, windowLabel, activeNoteId, addNote]);
+
+  // 2.5 SAFE BROADCAST ACTIVE ID CHANGES
   useEffect(() => {
-    if (windowLabel === 'widget' && !activeNote && notes.length > 0) {
+    if (activeNoteId) {
+      localStorage.setItem('zenstick:active_id', activeNoteId);
+      if (isIncomingSyncRef.current) {
+        isIncomingSyncRef.current = false;
+        return;
+      }
+      emit('sync_active_id', { id: activeNoteId, origin: windowLabel });
+    }
+  }, [activeNoteId, windowLabel]);
+
+  // 3. FALLBACK MECHANISM
+  useEffect(() => {
+    if (windowLabel === 'widget' && !activeNoteId && notes.length > 0) {
       setActiveNoteId(notes[0].id);
     }
-  }, [windowLabel, activeNote, notes, setActiveNoteId]);
+  }, [windowLabel, activeNoteId, notes, setActiveNoteId]);
 
-  // 🌟 ENHANCED HANDLERS: Broadcast changes to localStorage
+  const handleAddNote = (color: any = 'violet') => {
+    if (windowLabel === 'widget') {
+      emit('request_add_note', { color });
+    } else {
+      addNote(color);
+    }
+  };
+
   const handleUpdateContent = (content: string) => {
     if (!activeNote) return;
     updateNoteContent(activeNote.id, content);
     setIsSaving(true);
     setTimeout(() => setIsSaving(false), 1800);
-
-    // Tell the other window to update instantly
-    localStorage.setItem('zenstick:sync_content', JSON.stringify({ id: activeNote.id, content, ts: Date.now() }));
+    emit('sync_content', { id: activeNote.id, content, origin: windowLabel });
   };
 
   const handleUpdateTitle = (title: string) => {
     if (!activeNote) return;
     updateNoteTitle(activeNote.id, title);
-    
-    // Tell the other window to update instantly
-    localStorage.setItem('zenstick:sync_title', JSON.stringify({ id: activeNote.id, title, ts: Date.now() }));
+    emit('sync_title', { id: activeNote.id, title, origin: windowLabel });
   };
 
-  // FLOATING WIDGET OPEN FUNCTION
   const openFloatingWidget = async () => {
     try {
       if (activeNoteId) {
@@ -125,7 +175,7 @@ export default function App() {
   const colors = activeNote ? NOTE_COLORS[activeNote.color] : NOTE_COLORS.violet;
 
   // ==========================================
-  // RENDER 1: WIDGET WINDOW (Transparent)
+  // RENDER 1: WIDGET WINDOW MODE
   // ==========================================
   if (windowLabel === 'widget') {
     if (!activeNote) {
@@ -148,9 +198,8 @@ export default function App() {
           onDeleteSnapshot={id => deleteSnapshot(activeNote.id, id)}
           onTogglePin={() => togglePin(activeNote.id)}
           onDelete={() => deleteNote(activeNote.id)}
-          onShowNotes={() => {
-              invoke('swap_to_main');
-          }}
+          onAddNote={() => handleAddNote('violet')}
+          onShowNotes={() => invoke('swap_to_main')}
           isSaving={isSaving}
         />
       </div>
@@ -158,22 +207,16 @@ export default function App() {
   }
 
   // ==========================================
-  // RENDER 2: DASHBOARD FULL APP
+  // RENDER 2: DASHBOARD FULL MODE
   // ==========================================
   return (
     <div className="wallpaper-bg min-h-screen w-full overflow-hidden relative">
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div
-          className="absolute w-[600px] h-[600px] rounded-full opacity-20 blur-3xl"
-          style={{ background: colors.accent, top: '-100px', right: '-100px', animation: 'blob 8s ease-in-out infinite alternate' }}
-        />
-        <div
-          className="absolute w-[400px] h-[400px] rounded-full opacity-10 blur-3xl"
-          style={{ background: '#3b82f6', bottom: '-50px', left: '-80px', animation: 'blob 10s ease-in-out infinite alternate-reverse' }}
-        />
+        <div className="absolute w-[600px] h-[600px] rounded-full opacity-20 blur-3xl" style={{ background: colors.accent, top: '-100px', right: '-100px', animation: 'blob 8s ease-in-out infinite alternate' }} />
+        <div className="absolute w-[400px] h-[400px] rounded-full opacity-10 blur-3xl" style={{ background: '#3b82f6', bottom: '-50px', left: '-80px', animation: 'blob 10s ease-in-out infinite alternate-reverse' }} />
       </div>
 
-      {/* ===== TOP NAV ===== */}
+      {/* ===== TOP NAV BAR ===== */}
       <div className="relative z-10 flex items-center justify-between px-6 pt-5 pb-3">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center border" style={{ background: colors.bg, borderColor: colors.border }}>
@@ -189,12 +232,8 @@ export default function App() {
           <NavTab active={view === 'widget'} onClick={() => setView('widget')} icon={<StickyNote className="w-3.5 h-3.5" />} label="Dashboard" />
           <NavTab active={view === 'setup'} onClick={() => setView('setup')} icon={<BookOpen className="w-3.5 h-3.5" />} label="Setup Guide" />
           <div className="w-px h-4 bg-white/10 mx-1" />
-          <button 
-            onClick={openFloatingWidget}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all text-white/50 hover:text-white hover:bg-white/10 active:bg-blue-600 active:text-white"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            Launch Floating Widget
+          <button onClick={openFloatingWidget} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all text-white/50 hover:text-white hover:bg-white/10 active:bg-white/20 active:text-white">
+            <ExternalLink className="w-3.5 h-3.5" /> Launch Floating Widget
           </button>
         </div>
 
@@ -205,7 +244,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* ===== MAIN CONTENT ===== */}
       <div className="relative z-10">
         {view === 'setup' ? (
           <div className="mx-auto max-w-2xl px-4 py-4">
@@ -217,7 +255,7 @@ export default function App() {
           <div className="flex items-start justify-center gap-6 pt-4 px-6">
             {showSidebar && (
               <div className="rounded-2xl border overflow-hidden flex-shrink-0" style={{ background: 'rgba(15,12,41,0.85)', backdropFilter: 'blur(24px)', borderColor: 'rgba(255,255,255,0.10)', boxShadow: '0 32px 80px rgba(0,0,0,0.5)', width: '240px', height: '500px', padding: '16px' }}>
-                <NotesSidebar notes={notes} activeNoteId={activeNoteId} onSelectNote={id => { setActiveNoteId(id); setShowSidebar(false); }} onAddNote={(color) => { addNote(color); setShowSidebar(false); }} onDeleteNote={deleteNote} onTogglePin={togglePin} onClose={() => setShowSidebar(false)} />
+                <NotesSidebar notes={notes} activeNoteId={activeNoteId} onSelectNote={id => { setActiveNoteId(id); setShowSidebar(false); }} onAddNote={(color) => { handleAddNote(color); setShowSidebar(false); }} onDeleteNote={deleteNote} onTogglePin={togglePin} onClose={() => setShowSidebar(false)} />
               </div>
             )}
 
@@ -231,6 +269,7 @@ export default function App() {
                 onDeleteSnapshot={id => deleteSnapshot(activeNote.id, id)}
                 onTogglePin={() => togglePin(activeNote.id)}
                 onDelete={() => deleteNote(activeNote.id)}
+                onAddNote={() => handleAddNote('violet')}
                 onShowNotes={() => setShowSidebar(!showSidebar)}
                 isSaving={isSaving}
               />
@@ -238,7 +277,7 @@ export default function App() {
 
             <div className="flex flex-col gap-4 flex-shrink-0 w-[200px]">
               {activeNote && (
-                <div className="rounded-2xl border p-4" style={{ background: 'rgba(15,12,41,0.70)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.08)' }}>
+                <div className="rounded-2xl border p-4" style={{ background: 'rgba(15, 12, 41, 0.70)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.08)' }}>
                   <p className="text-[9px] font-semibold text-white/30 uppercase tracking-widest mb-3">Note Color</p>
                   <div className="grid grid-cols-3 gap-2">
                     {(Object.entries(NOTE_COLORS) as [keyof typeof NOTE_COLORS, typeof NOTE_COLORS[keyof typeof NOTE_COLORS]][]).map(([key, val]) => (
@@ -248,7 +287,7 @@ export default function App() {
                 </div>
               )}
 
-              <div className="rounded-2xl border p-4" style={{ background: 'rgba(15,12,41,0.70)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.08)' }}>
+              <div className="rounded-2xl border p-4" style={{ background: 'rgba(15, 12, 41, 0.70)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.08)' }}>
                 <div className="flex items-center gap-1.5 mb-3">
                   <Info className="w-3 h-3 text-white/30" />
                   <p className="text-[9px] font-semibold text-white/30 uppercase tracking-widest">Shortcuts</p>
@@ -261,7 +300,7 @@ export default function App() {
               </div>
 
               {activeNote && (
-                <div className="rounded-2xl border p-4" style={{ background: 'rgba(15,12,41,0.70)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.08)' }}>
+                <div className="rounded-2xl border p-4" style={{ background: 'rgba(15, 12, 41, 0.70)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.08)' }}>
                   <p className="text-[9px] font-semibold text-white/30 uppercase tracking-widest mb-3">Note Stats</p>
                   <div className="space-y-2">
                     <StatRow label="Notes" value={notes.length} />
@@ -280,17 +319,25 @@ export default function App() {
           to   { transform: scale(1.15) translate(30px, -20px); }
         }
       `}</style>
+
+      {/* 🌟 WATERMARK / SIGNATURE */}
+      <div className="absolute bottom-4 right-6 pointer-events-none z-0">
+        <p className="text-[10px] font-medium text-white/20 tracking-widest uppercase">
+          Crafted by <span className="text-white/40 font-bold">Talal</span>
+        </p>
+      </div>
+
     </div>
   );
 }
 
 function ShortcutRow({ keyStr, label }: { keyStr: string, label: string }) {
-    return (
-        <div className="flex items-center justify-between">
-            <span className="text-[9px] font-mono bg-white/8 text-white/50 px-1.5 py-0.5 rounded">{keyStr}</span>
-            <span className="text-[9px] text-white/35">{label}</span>
-        </div>
-    );
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-[9px] font-mono bg-white/8 text-white/50 px-1.5 py-0.5 rounded">{keyStr}</span>
+      <span className="text-[9px] text-white/35">{label}</span>
+    </div>
+  );
 }
 
 function NavTab({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
