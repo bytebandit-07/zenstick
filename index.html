@@ -4,11 +4,71 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ZenStick — Your Invisible Smart Notes Widget</title>
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+      body, html {
+        margin: 0;
+        padding: 0;
+        background-color: #08061e; /* 🌟 Darkened Base (Zero White Flash) */
+        overflow: hidden;
+        font-family: 'Inter', sans-serif; 
+      }
+      
+      .zen-splash-container {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        width: 100vw;
+        /* 🌟 Darkened Gradient (Deep Midnight Violet) */
+        background: linear-gradient(135deg, #08061e 0%, #211d4d 50%, #18182b 100%);
+      }
+
+      .zen-spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid rgba(255, 255, 255, 0.05);
+        border-top-color: #8b5cf6; 
+        border-radius: 50%;
+        animation: spin 1s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+        margin-bottom: 24px;
+        box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
+      }
+
+      .zen-title {
+        color: white;
+        font-size: 1.25rem;
+        font-weight: 700;
+        letter-spacing: 2px;
+        margin-bottom: 8px;
+      }
+
+      .zen-subtitle {
+        color: rgba(255, 255, 255, 0.4);
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 4px;
+      }
+
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="zen-splash-container">
+        <div class="zen-spinner"></div>
+        <div class="zen-title">ZENSTICK</div>
+        <div class="zen-subtitle">Believe you can.</div>
+      </div>
+    </div>
+    
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
