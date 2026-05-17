@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { invoke } from '@tauri-apps/api/core';
 import { emit, listen } from '@tauri-apps/api/event';
+import { enable, isEnabled } from '@tauri-apps/plugin-autostart';
 import { useNotes } from './hooks/useNotes';
 import ZenWidget from './components/ZenWidget';
 import NotesSidebar from './components/NotesSidebar';
@@ -33,6 +34,21 @@ export default function App() {
   const [windowLabel, setWindowLabel] = useState<string>('');
 
   const isIncomingSyncRef = useRef(false);
+
+  // 🌟 AUTOSTART LOGIC
+  useEffect(() => {
+    const checkAutostart = async () => {
+      try {
+        const autostartEnabled = await isEnabled();
+        if (!autostartEnabled) {
+          await enable();
+        }
+      } catch (err) {
+        console.error("Autostart error:", err);
+      }
+    };
+    checkAutostart();
+  }, []);
 
   // 1. WINDOW DETECTION & INITIAL SYNC
   useEffect(() => {
@@ -174,7 +190,6 @@ export default function App() {
 
   const colors = activeNote ? NOTE_COLORS[activeNote.color] : NOTE_COLORS.violet;
 
-  
   // RENDER 1: WIDGET WINDOW MODE
   if (windowLabel === 'widget') {
     if (!activeNote) {
@@ -205,9 +220,8 @@ export default function App() {
     );
   }
 
-  
   // RENDER 2: DASHBOARD FULL MODE
-    return (
+  return (
     <div className="wallpaper-bg min-h-screen w-full overflow-hidden relative">
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute w-[600px] h-[600px] rounded-full opacity-20 blur-3xl" style={{ background: colors.accent, top: '-100px', right: '-100px', animation: 'blob 8s ease-in-out infinite alternate' }} />
