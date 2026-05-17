@@ -42,7 +42,6 @@ fn swap_to_main(app: AppHandle) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_sql::Builder::default().build())
-        // 🌟 AUTOSTART PLUGIN INJECTED HERE
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--minimized"]), 
@@ -81,6 +80,19 @@ pub fn run() {
                     }
                 })
                 .build(app)?;
+
+            // 🌟 WIDGET-ONLY STARTUP LOGIC 🌟
+            let args: Vec<String> = std::env::args().collect();
+            if args.contains(&"--minimized".to_string()) {
+                // Main window ko hide karein
+                if let Some(main_win) = app.get_webview_window("main") {
+                    let _ = main_win.hide();
+                }
+                // Sirf Widget window ko show karein
+                if let Some(widget_win) = app.get_webview_window("widget") {
+                    let _ = widget_win.show();
+                }
+            }
 
             Ok(())
         })
