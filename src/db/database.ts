@@ -18,6 +18,17 @@ export const initDb = async () => {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    //Widget Tasks Table
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS widget_tasks (
+        id TEXT PRIMARY KEY,
+        content TEXT NOT NULL,
+        is_completed INTEGER DEFAULT 0,
+        order_index INTEGER aDEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
     console.log("Database Initialized! ✅");
   } catch (error) {
     console.error("Database Init Error:", error);

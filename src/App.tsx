@@ -5,52 +5,37 @@ import { emit, listen } from '@tauri-apps/api/event';
 import { enable, isEnabled } from '@tauri-apps/plugin-autostart';
 import { useNotes } from './hooks/useNotes';
 import ZenWidget from './components/ZenWidget';
+import StandaloneWidget from './components/StandaloneWidget'; 
 import NotesSidebar from './components/NotesSidebar';
-import SetupGuide from './components/SetupGuide';
+import DashboardView from './components/DashboardView';
 import { NOTE_COLORS } from './types';
-import { BookOpen, StickyNote, Info, Cpu, Zap, Shield, ExternalLink } from 'lucide-react';
+import { Activity, StickyNote, Info, Cpu, Zap, Shield, ExternalLink, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
-type View = 'widget' | 'setup';
+type View = 'editor' | 'dashboard';
 
 export default function App() {
   const {
-    notes,
-    activeNote,
-    activeNoteId,
-    setActiveNoteId,
-    updateNoteContent,
-    updateNoteTitle,
-    updateNoteColor,
-    togglePin,
-    addNote,
-    deleteNote,
-    restoreSnapshot,
-    deleteSnapshot,
+    notes, activeNote, activeNoteId, setActiveNoteId,
+    updateNoteContent, updateNoteTitle, updateNoteColor,
+    togglePin, addNote, deleteNote, restoreSnapshot, deleteSnapshot,
   } = useNotes();
 
-  const [view, setView] = useState<View>('widget');
-  const [showSidebar, setShowSidebar] = useState(false);
+  const [view, setView] = useState<View>('dashboard');
+  const [showSidebar, setShowSidebar] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [windowLabel, setWindowLabel] = useState<string>('');
-
   const isIncomingSyncRef = useRef(false);
 
-  // 🌟 AUTOSTART LOGIC
   useEffect(() => {
     const checkAutostart = async () => {
       try {
         const autostartEnabled = await isEnabled();
-        if (!autostartEnabled) {
-          await enable();
-        }
-      } catch (err) {
-        console.error("Autostart error:", err);
-      }
+        if (!autostartEnabled) await enable();
+      } catch (err) { console.error("Autostart error:", err); }
     };
     checkAutostart();
   }, []);
 
-  // 1. WINDOW DETECTION & INITIAL SYNC
   useEffect(() => {
     try {
       const appWindow = getCurrentWebviewWindow();
@@ -72,32 +57,23 @@ export default function App() {
           setActiveNoteId(savedActiveId);
         }
       }
-    } catch (e) {
-      console.error("Not running in Tauri environment", e);
-    }
-
+    } catch (e) {}
     return () => { document.body.className = ''; };
   }, [activeNoteId, setActiveNoteId]);
 
-  // 2. TAURI NATIVE LISTENERS
   useEffect(() => {
     let isMounted = true;
     const unlistenRegistry: (() => void)[] = [];
-
     const setupListeners = async () => {
       const unContent = await listen('sync_content', (event: any) => {
         if (!isMounted) return;
-        if (event.payload.origin !== windowLabel) {
-          updateNoteContent(event.payload.id, event.payload.content);
-        }
+        if (event.payload.origin !== windowLabel) updateNoteContent(event.payload.id, event.payload.content);
       });
       if (!isMounted) unContent(); else unlistenRegistry.push(unContent);
 
       const unTitle = await listen('sync_title', (event: any) => {
         if (!isMounted) return;
-        if (event.payload.origin !== windowLabel) {
-          updateNoteTitle(event.payload.id, event.payload.title);
-        }
+        if (event.payload.origin !== windowLabel) updateNoteTitle(event.payload.id, event.payload.title);
       });
       if (!isMounted) unTitle(); else unlistenRegistry.push(unTitle);
 
@@ -112,15 +88,12 @@ export default function App() {
 
       const unReqAdd = await listen('request_add_note', (event: any) => {
         if (!isMounted) return;
-        if (windowLabel !== 'widget') {
-          addNote(event.payload.color); 
-        }
+        if (windowLabel !== 'widget') addNote(event.payload.color); 
       });
       if (!isMounted) unReqAdd(); else unlistenRegistry.push(unReqAdd);
     };
 
     setupListeners();
-
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'zenstick:active_id' && e.newValue && e.newValue !== activeNoteId) {
         isIncomingSyncRef.current = true;
@@ -128,39 +101,25 @@ export default function App() {
       }
     };
     window.addEventListener('storage', handleStorageChange);
-
-    return () => {
-      isMounted = false;
-      unlistenRegistry.forEach(unsub => unsub());
-      window.removeEventListener('storage', handleStorageChange);
-    };
+    return () => { isMounted = false; unlistenRegistry.forEach(unsub => unsub()); window.removeEventListener('storage', handleStorageChange); };
   }, [setActiveNoteId, updateNoteContent, updateNoteTitle, windowLabel, activeNoteId, addNote]);
 
-  // 2.5 SAFE BROADCAST ACTIVE ID CHANGES
   useEffect(() => {
     if (activeNoteId) {
       localStorage.setItem('zenstick:active_id', activeNoteId);
-      if (isIncomingSyncRef.current) {
-        isIncomingSyncRef.current = false;
-        return;
-      }
+      if (isIncomingSyncRef.current) { isIncomingSyncRef.current = false; return; }
       emit('sync_active_id', { id: activeNoteId, origin: windowLabel });
     }
   }, [activeNoteId, windowLabel]);
 
-  // 3. FALLBACK MECHANISM
   useEffect(() => {
-    if (windowLabel === 'widget' && !activeNoteId && notes.length > 0) {
-      setActiveNoteId(notes[0].id);
-    }
+    if (windowLabel === 'widget' && !activeNoteId && notes.length > 0) setActiveNoteId(notes[0].id);
   }, [windowLabel, activeNoteId, notes, setActiveNoteId]);
 
-  const handleAddNote = (color: any = 'violet') => {
-    if (windowLabel === 'widget') {
-      emit('request_add_note', { color });
-    } else {
-      addNote(color);
-    }
+  const handleAddNote = async (color: any = 'violet') => {
+    const newId = await addNote(color);
+    localStorage.setItem('zenstick:active_id', newId);
+    emit('sync_active_id', { id: newId, origin: windowLabel });
   };
 
   const handleUpdateContent = (content: string) => {
@@ -181,55 +140,45 @@ export default function App() {
     try {
       if (activeNoteId) {
         localStorage.setItem('zenstick:active_id', activeNoteId);
+        emit('sync_active_id', { id: activeNoteId, origin: 'force_launch' }); 
       }
       await invoke('swap_to_widget'); 
-    } catch (e) {
-      alert("Widget launch failed: " + e);
-    }
+    } catch (e) { alert("Widget launch failed: " + e); }
   };
 
   const colors = activeNote ? NOTE_COLORS[activeNote.color] : NOTE_COLORS.violet;
 
-  // RENDER 1: WIDGET WINDOW MODE
   if (windowLabel === 'widget') {
-    if (!activeNote) {
-      return (
-        <div className="w-screen h-screen bg-gray-900/80 backdrop-blur-md flex flex-col items-center justify-center text-white/50 text-xs rounded-2xl border border-white/10">
-          <div className="w-5 h-5 border-2 border-white/20 border-t-white/80 rounded-full animate-spin mb-3"></div>
-          Initialising ZenWidget...
-        </div>
-      );
-    }
-    
     return (
       <div className="w-screen h-screen overflow-hidden bg-transparent">
-        <ZenWidget
-          key={activeNote.id}
-          note={activeNote}
-          onUpdateContent={handleUpdateContent}
-          onUpdateTitle={handleUpdateTitle}
-          onRestoreSnapshot={snap => restoreSnapshot(activeNote.id, snap)}
-          onDeleteSnapshot={id => deleteSnapshot(activeNote.id, id)}
-          onTogglePin={() => togglePin(activeNote.id)}
-          onDelete={() => deleteNote(activeNote.id)}
-          onAddNote={() => handleAddNote('violet')}
-          onShowNotes={() => invoke('swap_to_main')}
-          isSaving={isSaving}
-        />
+        {activeNote ? (
+          <StandaloneWidget 
+            note={activeNote}
+            onUpdateContent={handleUpdateContent}
+            onUpdateTitle={handleUpdateTitle}
+            onRestoreSnapshot={snap => restoreSnapshot(activeNote.id, snap)}
+            onDeleteSnapshot={id => deleteSnapshot(activeNote.id, id)}
+            onTogglePin={() => togglePin(activeNote.id)}
+            onDelete={() => deleteNote(activeNote.id)}
+            onAddNote={() => handleAddNote('violet')}
+            onShowNotes={() => invoke('swap_to_main')}
+            isSaving={isSaving}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-white/50">Loading Workspace...</div>
+        )}
       </div>
     );
   }
 
-  // RENDER 2: DASHBOARD FULL MODE
   return (
-    <div className="wallpaper-bg min-h-screen w-full overflow-hidden relative">
+    <div className="wallpaper-bg min-h-screen w-full overflow-hidden relative flex flex-col">
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute w-[600px] h-[600px] rounded-full opacity-20 blur-3xl" style={{ background: colors.accent, top: '-100px', right: '-100px', animation: 'blob 8s ease-in-out infinite alternate' }} />
         <div className="absolute w-[400px] h-[400px] rounded-full opacity-10 blur-3xl" style={{ background: '#3b82f6', bottom: '-50px', left: '-80px', animation: 'blob 10s ease-in-out infinite alternate-reverse' }} />
       </div>
 
-      {/* ===== TOP NAV BAR ===== */}
-      <div className="relative z-10 flex items-center justify-between px-6 pt-5 pb-3">
+      <div className="flex-shrink-0 relative z-10 flex items-center justify-between px-6 pt-5 pb-3">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center border" style={{ background: colors.bg, borderColor: colors.border }}>
             <StickyNote className="w-4 h-4" style={{ color: colors.accent }} />
@@ -241,8 +190,8 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-xl p-1 shadow-sm">
-          <NavTab active={view === 'widget'} onClick={() => setView('widget')} icon={<StickyNote className="w-3.5 h-3.5" />} label="Dashboard" />
-          <NavTab active={view === 'setup'} onClick={() => setView('setup')} icon={<BookOpen className="w-3.5 h-3.5" />} label="Setup Guide" />
+          <NavTab active={view === 'dashboard'} onClick={() => setView('dashboard')} icon={<Activity className="w-3.5 h-3.5" />} label="Home" />
+          <NavTab active={view === 'editor'} onClick={() => setView('editor')} icon={<StickyNote className="w-3.5 h-3.5" />} label="Editor" />
           <div className="w-px h-4 bg-white/10 mx-1" />
           <button onClick={openFloatingWidget} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all text-white/50 hover:text-white hover:bg-white/10 active:bg-white/20 active:text-white">
             <ExternalLink className="w-3.5 h-3.5" /> Launch Floating Widget
@@ -256,38 +205,85 @@ export default function App() {
         </div>
       </div>
 
-      <div className="relative z-10">
-        {view === 'setup' ? (
-          <div className="mx-auto max-w-2xl px-4 py-4">
-            <div className="rounded-2xl border overflow-hidden" style={{ background: 'rgba(15,12,41,0.82)', backdropFilter: 'blur(24px)', borderColor: 'rgba(255,255,255,0.10)', boxShadow: '0 32px 80px rgba(0,0,0,0.5)', height: 'calc(100vh - 120px)' }}>
-              <SetupGuide />
+      <div className="flex-1 relative z-10 overflow-hidden pb-4">
+        {view === 'dashboard' ? (
+          <div className="mx-auto max-w-4xl px-4 h-full">
+            <div className="rounded-3xl border overflow-hidden h-full" style={{ background: 'rgba(15,12,41,0.82)', backdropFilter: 'blur(24px)', borderColor: 'rgba(255,255,255,0.10)', boxShadow: '0 32px 80px rgba(0,0,0,0.5)' }}>
+              <DashboardView 
+                notes={notes}
+                onSelectNote={(id) => { setActiveNoteId(id); setView('editor'); }}
+                onCreateNote={() => { handleAddNote('violet'); setView('editor'); }}
+                onViewAllNotes={() => { setView('editor'); setShowSidebar(true); }}
+              />
             </div>
           </div>
         ) : (
-          <div className="flex items-start justify-center gap-6 pt-4 px-6">
-            {showSidebar && (
-              <div className="rounded-2xl border overflow-hidden flex-shrink-0" style={{ background: 'rgba(15,12,41,0.85)', backdropFilter: 'blur(24px)', borderColor: 'rgba(255,255,255,0.10)', boxShadow: '0 32px 80px rgba(0,0,0,0.5)', width: '240px', height: '500px', padding: '16px' }}>
-                <NotesSidebar notes={notes} activeNoteId={activeNoteId} onSelectNote={id => { setActiveNoteId(id); setShowSidebar(false); }} onAddNote={(color) => { handleAddNote(color); setShowSidebar(false); }} onDeleteNote={deleteNote} onTogglePin={togglePin} onClose={() => setShowSidebar(false)} />
+          <div className="flex h-full w-full px-6 gap-6">
+            
+            <div 
+              className={`transition-all duration-300 ease-in-out flex-shrink-0 overflow-hidden ${
+                showSidebar ? 'w-[260px] opacity-100' : 'w-0 opacity-0'
+              }`}
+            >
+              <div className="w-[260px] h-full rounded-2xl border flex flex-col" style={{ background: 'rgba(15,12,41,0.85)', backdropFilter: 'blur(24px)', borderColor: 'rgba(255,255,255,0.10)', boxShadow: '0 32px 80px rgba(0,0,0,0.5)', padding: '16px' }}>
+                {/* 🌟 AUTO HIDE REMOVED: onSelectNote and onAddNote ab setShowSidebar(false) nahi karte! */}
+                <NotesSidebar 
+                  notes={notes} 
+                  activeNoteId={activeNoteId} 
+                  onSelectNote={id => setActiveNoteId(id)} 
+                  onAddNote={(color) => handleAddNote(color)} 
+                  onDeleteNote={deleteNote} 
+                  onTogglePin={togglePin} 
+                  onClose={() => setShowSidebar(false)} 
+                />
               </div>
-            )}
+            </div>
 
-            {activeNote && (
-              <ZenWidget
-                key={activeNote.id}
-                note={activeNote}
-                onUpdateContent={handleUpdateContent}
-                onUpdateTitle={handleUpdateTitle}
-                onRestoreSnapshot={snap => restoreSnapshot(activeNote.id, snap)}
-                onDeleteSnapshot={id => deleteSnapshot(activeNote.id, id)}
-                onTogglePin={() => togglePin(activeNote.id)}
-                onDelete={() => deleteNote(activeNote.id)}
-                onAddNote={() => handleAddNote('violet')}
-                onShowNotes={() => setShowSidebar(!showSidebar)}
-                isSaving={isSaving}
-              />
-            )}
+            <div className="flex-1 flex flex-col min-w-0 min-h-0 h-full">
+              
+              <div className="flex-shrink-0 pb-3 flex items-center gap-3">
+                <button 
+                  onClick={() => setShowSidebar(!showSidebar)}
+                  className="flex items-center justify-center w-9 h-9 rounded-xl border border-white/10 bg-black/20 hover:bg-white/10 text-white/60 hover:text-white transition-all shadow-sm"
+                  title={showSidebar ? "Close Sidebar" : "Open Sidebar"}
+                >
+                  {showSidebar ? <PanelLeftClose className="w-4.5 h-4.5" /> : <PanelLeftOpen className="w-4.5 h-4.5" />}
+                </button>
+                <span className="text-xs font-semibold text-white/30 uppercase tracking-widest">
+                  {activeNote ? 'Active Workspace' : 'Editor'}
+                </span>
+              </div>
 
-            <div className="flex flex-col gap-4 flex-shrink-0 w-[200px]">
+              <div className="flex-1 min-h-0 w-full flex justify-center">
+                <div className="w-full max-w-4xl h-[80vh] flex flex-col transition-all duration-300">
+                  {activeNote ? (
+                    <ZenWidget
+                      key={activeNote.id}
+                      note={activeNote}
+                      onUpdateContent={handleUpdateContent}
+                      onUpdateTitle={handleUpdateTitle}
+                      onRestoreSnapshot={snap => restoreSnapshot(activeNote.id, snap)}
+                      onDeleteSnapshot={id => deleteSnapshot(activeNote.id, id)}
+                      onTogglePin={() => togglePin(activeNote.id)}
+                      onDelete={() => deleteNote(activeNote.id)}
+                      onAddNote={() => handleAddNote('violet')}
+                      onShowNotes={() => setShowSidebar(!showSidebar)}
+                      isSaving={isSaving}
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center w-full h-full rounded-2xl border bg-black/20 backdrop-blur-md border-white/10 shadow-2xl">
+                      <p className="text-white/40 text-sm">No notes available.</p>
+                      <button onClick={() => handleAddNote('violet')} className="mt-4 px-4 py-2 bg-violet-500/20 text-violet-300 rounded-lg text-xs hover:bg-violet-500/30 transition-all">
+                        Create First Note
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+
+            <div className="w-[220px] flex-shrink-0 h-full overflow-y-auto custom-scrollbar flex flex-col gap-4 pr-2">
               {activeNote && (
                 <div className="rounded-2xl border p-4" style={{ background: 'rgba(15, 12, 41, 0.70)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.08)' }}>
                   <p className="text-[9px] font-semibold text-white/30 uppercase tracking-widest mb-3">Note Color</p>
@@ -332,7 +328,6 @@ export default function App() {
         }
       `}</style>
 
-      {/* WATERMARK / SIGNATURE */}
       <div className="absolute bottom-4 right-6 pointer-events-none z-0">
         <p className="text-[10px] font-medium text-white/20 tracking-widest uppercase">
           Crafted by <span className="text-white/40 font-bold">Talal</span>

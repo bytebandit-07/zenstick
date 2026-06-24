@@ -1,3 +1,10 @@
+export interface WidgetTask {
+  id: string;
+  content: string;
+  isCompleted: boolean;
+  orderIndex: number;
+  createdAt: Date;
+}
 export interface Snapshot {
   id: string;
   content: string; // HTML string

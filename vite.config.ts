@@ -16,4 +16,15 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src"),
     },
   },
+  
+  // 🌟 NEW: Tauri aur Vite Watcher Crash Fix 🌟
+  clearScreen: false,
+  server: {
+    port: 5173,
+    strictPort: true,
+    watch: {
+      // Vite ko strict order ke src-tauri ke pange mein na pare
+      ignored: ["**/src-tauri/**"],
+    },
+  },
 });

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pin, Trash2, ChevronLeft, Palette } from 'lucide-react';
+import { Plus, Pin, Trash2, Palette } from 'lucide-react';
 import { Note, NoteColor, NOTE_COLORS } from '../types';
 import { format, isToday, isYesterday } from 'date-fns';
 
@@ -10,7 +10,7 @@ interface NotesSidebarProps {
   onAddNote: (color: NoteColor) => void;
   onDeleteNote: (id: string) => void;
   onTogglePin: (id: string) => void;
-  onClose: () => void;
+  onClose: () => void; // Prop kept so App.tsx doesn't throw errors, but we won't use it for auto-closing anymore
 }
 
 function formatDate(date: Date): string {
@@ -26,7 +26,7 @@ function stripHtml(html: string): string {
 }
 
 export default function NotesSidebar({
-  notes, activeNoteId, onSelectNote, onAddNote, onDeleteNote, onTogglePin, onClose
+  notes, activeNoteId, onSelectNote, onAddNote, onDeleteNote, onTogglePin
 }: NotesSidebarProps) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -68,18 +68,12 @@ export default function NotesSidebar({
               </div>
             )}
           </div>
-          {/* Close Button */}
-          <button
-            onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/8 hover:bg-white/15 text-white/60 hover:text-white transition-all"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
+          {/* 🌟 OLD CHEVRON < BUTTON REMOVED FROM HERE 🌟 */}
         </div>
       </div>
 
       {/* Notes list */}
-      <div className="flex-1 overflow-y-auto pr-1 space-y-1.5">
+      <div className="flex-1 overflow-y-auto pr-1 space-y-1.5 custom-scrollbar">
         {notes.map(note => {
           const colors = NOTE_COLORS[note.color];
           const preview = stripHtml(note.currentContent).slice(0, 80);
@@ -89,7 +83,7 @@ export default function NotesSidebar({
           return (
             <div
               key={note.id}
-              onClick={() => { onSelectNote(note.id); onClose(); }}
+              onClick={() => onSelectNote(note.id)} // 🌟 AUTO-CLOSE REMOVED FROM HERE 🌟
               onMouseEnter={() => setHoveredId(note.id)}
               onMouseLeave={() => setHoveredId(null)}
               className={[
