@@ -6,7 +6,7 @@ export function useTasks() {
   const [tasks, setTasks] = useState<WidgetTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 1. Database se tasks load karna
+  // 1. load tasks from DB
   const loadTasks = async () => {
     try {
       const db = await getDb();
@@ -28,12 +28,12 @@ export function useTasks() {
     }
   };
 
-  // Jab hook pehli dafa chale, tasks load kar lo
+  // when hook runs for first time, load tasks from DB
   useEffect(() => {
     loadTasks();
   }, []);
 
-  // 2. Naya task add karna
+  // 2. to add a new task
   const addTask = async (content: string) => {
     try {
       const db = await getDb();

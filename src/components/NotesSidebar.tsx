@@ -10,7 +10,7 @@ interface NotesSidebarProps {
   onAddNote: (color: NoteColor) => void;
   onDeleteNote: (id: string) => void;
   onTogglePin: (id: string) => void;
-  onClose: () => void; // Prop kept so App.tsx doesn't throw errors, but we won't use it for auto-closing anymore
+  onClose: () => void;
 }
 
 function formatDate(date: Date): string {
@@ -42,7 +42,9 @@ export default function NotesSidebar({
         <div className="flex items-center gap-1">
           {/* New Note Button */}
           <div className="relative">
+            {/* 🌟 added data-tour="add-note" attribute */}
             <button
+              data-tour="add-note"
               onClick={() => setShowColorPicker(!showColorPicker)}
               title="New Note"
               className="w-7 h-7 flex items-center justify-center rounded-lg bg-violet-500/30 hover:bg-violet-500/50 text-violet-300 transition-all"
@@ -68,7 +70,6 @@ export default function NotesSidebar({
               </div>
             )}
           </div>
-          {/* 🌟 OLD CHEVRON < BUTTON REMOVED FROM HERE 🌟 */}
         </div>
       </div>
 
@@ -83,7 +84,7 @@ export default function NotesSidebar({
           return (
             <div
               key={note.id}
-              onClick={() => onSelectNote(note.id)} // 🌟 AUTO-CLOSE REMOVED FROM HERE 🌟
+              onClick={() => onSelectNote(note.id)}
               onMouseEnter={() => setHoveredId(note.id)}
               onMouseLeave={() => setHoveredId(null)}
               className={[

@@ -109,7 +109,7 @@ export default function ZenWidget({
   
   const containerClass = "w-full h-full flex flex-col";
 
-  // 🌟 THE NEW BEAUTIFUL MINIMIZED CAPSULE 🌟
+  // THE NEW MINIMIZED CAPSULE 
   if (isMinimized && isWidgetMode) {
     return (
       <div className="w-full h-full bg-transparent flex items-start p-1">
@@ -138,7 +138,7 @@ export default function ZenWidget({
     );
   }
 
-  // 🌟 NORMAL EDITOR VIEW
+  // NORMAL EDITOR VIEW
   return (
     <div
       className={`relative ${containerClass} rounded-2xl border shadow-2xl overflow-hidden transition-all duration-300`}

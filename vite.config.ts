@@ -17,7 +17,7 @@ export default defineConfig({
     },
   },
   
-  // 🌟 NEW: Tauri aur Vite Watcher Crash Fix 🌟
+  
   clearScreen: false,
   server: {
     port: 5173,

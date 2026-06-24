@@ -8,8 +8,9 @@ import ZenWidget from './components/ZenWidget';
 import StandaloneWidget from './components/StandaloneWidget'; 
 import NotesSidebar from './components/NotesSidebar';
 import DashboardView from './components/DashboardView';
+import TutorialTour from './components/TutorialTour';
 import { NOTE_COLORS } from './types';
-import { Activity, StickyNote, Info, Cpu, Zap, Shield, ExternalLink, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Activity, StickyNote, Info, Cpu, Zap, Shield, ExternalLink, PanelLeftClose, PanelLeftOpen, HelpCircle } from 'lucide-react';
 
 type View = 'editor' | 'dashboard';
 
@@ -25,6 +26,10 @@ export default function App() {
   const [isSaving, setIsSaving] = useState(false);
   const [windowLabel, setWindowLabel] = useState<string>('');
   const isIncomingSyncRef = useRef(false);
+
+  //  TUTORIAL STATE MANAGEMENT
+  const [runTour, setRunTour] = useState(false);
+  const [tourKey, setTourKey] = useState(0); // new: to nreset the tour
 
   useEffect(() => {
     const checkAutostart = async () => {
@@ -49,17 +54,34 @@ export default function App() {
       } else {
         document.body.className = 'wallpaper-bg';
       }
-
-      if (label === 'widget') {
-        const savedActiveId = localStorage.getItem('zenstick:active_id');
-        if (savedActiveId && savedActiveId !== activeNoteId) {
-          isIncomingSyncRef.current = true;
-          setActiveNoteId(savedActiveId);
-        }
-      }
     } catch (e) {}
     return () => { document.body.className = ''; };
-  }, [activeNoteId, setActiveNoteId]);
+  }, []);
+
+  // Non-blocking Tutorial Trigger (First time user)
+  useEffect(() => {
+    if (windowLabel === '' || windowLabel === 'widget') return;
+
+    const hasSeenTutorial = localStorage.getItem('zenstick:tutorial_seen');
+    if (!hasSeenTutorial) {
+      const timer = setTimeout(() => {
+        setView('editor');
+        setShowSidebar(true);
+        setRunTour(true);
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [windowLabel]);
+
+  useEffect(() => {
+    if (windowLabel === 'widget') {
+      const savedActiveId = localStorage.getItem('zenstick:active_id');
+      if (savedActiveId && savedActiveId !== activeNoteId) {
+        isIncomingSyncRef.current = true;
+        setActiveNoteId(savedActiveId);
+      }
+    }
+  }, [windowLabel, activeNoteId, setActiveNoteId]);
 
   useEffect(() => {
     let isMounted = true;
@@ -146,6 +168,19 @@ export default function App() {
     } catch (e) { alert("Widget launch failed: " + e); }
   };
 
+  const handleTourEnd = () => {
+    setRunTour(false);
+    localStorage.setItem('zenstick:tutorial_seen', 'true');
+  };
+
+  // FIX: force reset the component for guide button
+  const handleManualTourStart = () => {
+    setView('editor');
+    setShowSidebar(true);
+    setTourKey(prev => prev + 1); 
+    setTimeout(() => setRunTour(true), 300);
+  };
+
   const colors = activeNote ? NOTE_COLORS[activeNote.color] : NOTE_COLORS.violet;
 
   if (windowLabel === 'widget') {
@@ -173,6 +208,9 @@ export default function App() {
 
   return (
     <div className="wallpaper-bg min-h-screen w-full overflow-hidden relative flex flex-col">
+      {/* Isolated Tutorial Render Area with tourKey */}
+      <TutorialTour key={tourKey} run={runTour} onTourEnd={handleTourEnd} />
+
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute w-[600px] h-[600px] rounded-full opacity-20 blur-3xl" style={{ background: colors.accent, top: '-100px', right: '-100px', animation: 'blob 8s ease-in-out infinite alternate' }} />
         <div className="absolute w-[400px] h-[400px] rounded-full opacity-10 blur-3xl" style={{ background: '#3b82f6', bottom: '-50px', left: '-80px', animation: 'blob 10s ease-in-out infinite alternate-reverse' }} />
@@ -193,12 +231,21 @@ export default function App() {
           <NavTab active={view === 'dashboard'} onClick={() => setView('dashboard')} icon={<Activity className="w-3.5 h-3.5" />} label="Home" />
           <NavTab active={view === 'editor'} onClick={() => setView('editor')} icon={<StickyNote className="w-3.5 h-3.5" />} label="Editor" />
           <div className="w-px h-4 bg-white/10 mx-1" />
-          <button onClick={openFloatingWidget} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all text-white/50 hover:text-white hover:bg-white/10 active:bg-white/20 active:text-white">
+          <button data-tour="launch-widget" onClick={openFloatingWidget} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all text-white/50 hover:text-white hover:bg-white/10 active:bg-white/20 active:text-white">
             <ExternalLink className="w-3.5 h-3.5" /> Launch Floating Widget
           </button>
         </div>
 
         <div className="flex items-center gap-4">
+          <button 
+            data-tour="help-button"
+            onClick={handleManualTourStart}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 text-xs font-medium text-white/50 hover:text-white hover:bg-white/10 transition-all"
+            title="Start App Tour"
+          >
+            <HelpCircle className="w-3.5 h-3.5 text-violet-400" />
+            <span>Guide</span>
+          </button>
           <StatBadge icon={<Zap className="w-3 h-3 text-amber-400" />} label="Native Performance" />
           <StatBadge icon={<Shield className="w-3 h-3 text-emerald-400" />} label="Local Storage" />
           <StatBadge icon={<Cpu className="w-3 h-3 text-blue-400" />} label="Tauri v2" />
@@ -221,12 +268,12 @@ export default function App() {
           <div className="flex h-full w-full px-6 gap-6">
             
             <div 
+              data-tour="sidebar"
               className={`transition-all duration-300 ease-in-out flex-shrink-0 overflow-hidden ${
                 showSidebar ? 'w-[260px] opacity-100' : 'w-0 opacity-0'
               }`}
             >
               <div className="w-[260px] h-full rounded-2xl border flex flex-col" style={{ background: 'rgba(15,12,41,0.85)', backdropFilter: 'blur(24px)', borderColor: 'rgba(255,255,255,0.10)', boxShadow: '0 32px 80px rgba(0,0,0,0.5)', padding: '16px' }}>
-                {/* 🌟 AUTO HIDE REMOVED: onSelectNote and onAddNote ab setShowSidebar(false) nahi karte! */}
                 <NotesSidebar 
                   notes={notes} 
                   activeNoteId={activeNoteId} 
@@ -243,6 +290,7 @@ export default function App() {
               
               <div className="flex-shrink-0 pb-3 flex items-center gap-3">
                 <button 
+                  data-tour="sidebar-toggle"
                   onClick={() => setShowSidebar(!showSidebar)}
                   className="flex items-center justify-center w-9 h-9 rounded-xl border border-white/10 bg-black/20 hover:bg-white/10 text-white/60 hover:text-white transition-all shadow-sm"
                   title={showSidebar ? "Close Sidebar" : "Open Sidebar"}
@@ -255,7 +303,7 @@ export default function App() {
               </div>
 
               <div className="flex-1 min-h-0 w-full flex justify-center">
-                <div className="w-full max-w-4xl h-[80vh] flex flex-col transition-all duration-300">
+                <div data-tour="editor-area" className="w-full max-w-4xl h-[80vh] flex flex-col transition-all duration-300">
                   {activeNote ? (
                     <ZenWidget
                       key={activeNote.id}

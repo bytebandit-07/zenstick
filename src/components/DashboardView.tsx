@@ -5,7 +5,7 @@ interface DashboardViewProps {
   notes: Note[];
   onSelectNote: (id: string) => void;
   onCreateNote: () => void;
-  onViewAllNotes: () => void; // 🌟 Naya prop: View All Notes
+  onViewAllNotes: () => void; //  Naya prop: View All Notes
 }
 
 export default function DashboardView({ notes, onSelectNote, onCreateNote, onViewAllNotes }: DashboardViewProps) {
@@ -18,7 +18,7 @@ export default function DashboardView({ notes, onSelectNote, onCreateNote, onVie
   return (
     <div className="flex flex-col h-full bg-[#0a0a16]/40 text-white/90 p-8 overflow-y-auto custom-scrollbar">
       
-      {/* 🌟 GREETING SECTION */}
+      {/* GREETING SECTION */}
       <div className="mb-8 animate-fade-in">
         <h1 className="text-3xl font-bold tracking-tight mb-2 flex items-center gap-3">
           {greeting}, Talal <Sparkles className="w-6 h-6 text-violet-400" />
@@ -26,7 +26,7 @@ export default function DashboardView({ notes, onSelectNote, onCreateNote, onVie
         <p className="text-white/40 text-sm">Here is a quick overview of your ZenStick workspace.</p>
       </div>
 
-      {/* 🌟 STATS CARDS */}
+      {/* STATS CARDS */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         <StatCard icon={<FileText className="w-5 h-5 text-blue-400" />} label="Total Notes" value={notes.length} color="blue" />
         <StatCard icon={<Pin className="w-5 h-5 text-emerald-400" />} label="Pinned Notes" value={pinnedCount} color="emerald" />
@@ -34,7 +34,7 @@ export default function DashboardView({ notes, onSelectNote, onCreateNote, onVie
       </div>
 
       <div className="grid grid-cols-2 gap-8">
-        {/* 🌟 RECENT ACTIVITY */}
+        {/* RECENT ACTIVITY */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold uppercase tracking-widest text-white/50">Recent Notes</h2>
@@ -66,7 +66,7 @@ export default function DashboardView({ notes, onSelectNote, onCreateNote, onVie
           </div>
         </div>
 
-        {/* 🌟 QUICK ACTIONS */}
+        {/* QUICK ACTIONS */}
         <div className="space-y-4">
           <h2 className="text-sm font-bold uppercase tracking-widest text-white/50">Quick Actions</h2>
           <div className="grid grid-cols-1 gap-3">
@@ -80,7 +80,7 @@ export default function DashboardView({ notes, onSelectNote, onCreateNote, onVie
               </div>
             </button>
 
-            {/* 🌟 NAYA BUTTON: Browse All Notes */}
+            {/*BUTTON: Browse All Notes */}
             <button onClick={onViewAllNotes} className="flex items-center gap-4 p-4 rounded-xl border border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20 transition-all group text-left">
               <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <Library className="w-5 h-5 text-blue-400" />
