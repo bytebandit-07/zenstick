@@ -40,6 +40,7 @@ export default function ZenWidget({
   const [toolbarVisible, setToolbarVisible] = useState(false);
   
   const [isWidgetMode, setIsWidgetMode] = useState(false);
+  const isDashboard = !isWidgetMode;
   
   const titleInputRef = useRef<HTMLInputElement>(null);
   const colors = NOTE_COLORS[note.color];
@@ -71,17 +72,17 @@ export default function ZenWidget({
     editorProps: { attributes: { class: 'tiptap-editor', spellcheck: 'true' } },
   });
 
-  // 🔥 FIXED: Content update effect - now properly clears content on new note
   useEffect(() => {
-    if (!editor || editor.isDestroyed) return;
-    
+    if (!editor || editor.isDestroyed || editor.isFocused) return;
     const incoming = note.currentContent || '';
-    
-    queueMicrotask(() => {
-      if (!editor.isDestroyed) {
-        editor.commands.setContent(incoming, { emitUpdate: false });
-      }
-    });
+    const current = editor.getHTML();
+    if (incoming !== current) {
+      queueMicrotask(() => {
+        if (!editor.isDestroyed && note.currentContent === incoming) {
+          editor.commands.setContent(incoming, { emitUpdate: false });
+        }
+      });
+    }
   }, [note.id, note.currentContent, editor]);
 
   const handleRestoreSnapshot = useCallback((snapshot: Snapshot) => {
@@ -96,9 +97,9 @@ export default function ZenWidget({
       const appWindow = getCurrentWebviewWindow();
       if (appWindow.label === 'widget') {
         if (minimize) {
-          await appWindow.setSize(new LogicalSize(354, 64)); 
+          await appWindow.setSize(new LogicalSize(350, 60)); // Shrink window to just fit the capsule
         } else {
-          await appWindow.setSize(new LogicalSize(350, 500)); 
+          await appWindow.setSize(new LogicalSize(350, 500)); // Back to normal size
         }
       }
     } catch (e) { console.error("Resize error:", e); }
@@ -106,38 +107,49 @@ export default function ZenWidget({
 
   const wordCount = editor ? editor.getText().trim().split(/\s+/).filter(Boolean).length : 0;
   
-  // 🌟 ALWAYS FULL HEIGHT
   const containerClass = "w-full h-full flex flex-col";
 
+  // 🌟 THE NEW BEAUTIFUL MINIMIZED CAPSULE 🌟
   if (isMinimized && isWidgetMode) {
     return (
-      <div className="w-full h-full p-0.5">
+      <div className="w-full h-full bg-transparent flex items-start p-1">
         <div
-          className="w-full h-full rounded-full border shadow-2xl overflow-hidden cursor-pointer group flex items-center px-4 transition-all duration-300"
+          className="w-full h-[52px] rounded-2xl border shadow-[0_8px_30px_rgb(0,0,0,0.4)] cursor-pointer group flex items-center px-4 transition-all duration-300"
           style={{ background: 'rgba(15, 12, 41, 0.95)', backdropFilter: 'blur(24px)', borderColor: colors.border, WebkitAppRegion: 'drag' } as any}
           onClick={() => toggleMinimize(false)}
         >
-          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 mr-3 pointer-events-none" style={{ background: colors.accent }} />
-          <span className="text-sm font-semibold text-white/90 flex-1 min-w-0 truncate pointer-events-none">{note.title || 'Quick Note'}</span>
-          <div className="w-5 h-5 flex items-center justify-center flex-shrink-0 pointer-events-none">
-            <Maximize2 className="w-3 h-3 text-white/30 group-hover:text-white/60 transition-colors" />
+          {/* Accent dot */}
+          <div 
+            className="w-3 h-3 rounded-full flex-shrink-0 mr-3 pointer-events-none transition-transform group-hover:scale-110" 
+            style={{ background: colors.accent, boxShadow: `0 0 10px ${colors.accent}40` }} 
+          />
+          
+          {/* Note Title */}
+          <span className="text-[13px] font-bold text-white/90 flex-1 min-w-0 truncate pointer-events-none tracking-wide">
+            {note.title || 'Quick Note'}
+          </span>
+          
+          {/* Beautiful Expand Button */}
+          <div className="w-8 h-8 flex items-center justify-center flex-shrink-0 rounded-xl bg-white/5 border border-white/10 group-hover:bg-white/15 group-hover:border-white/20 transition-all duration-300 pointer-events-none ml-2">
+            <Maximize2 className="w-4 h-4 text-white/50 group-hover:text-white transition-colors" />
           </div>
         </div>
       </div>
     );
   }
 
+  // 🌟 NORMAL EDITOR VIEW
   return (
     <div
       className={`relative ${containerClass} rounded-2xl border shadow-2xl overflow-hidden transition-all duration-300`}
       style={{ background: `linear-gradient(135deg, ${colors.bg} 0%, rgba(15, 12, 41, 0.85) 100%)`, backdropFilter: 'blur(28px)', borderColor: colors.border }}
     >
       <div
-        className={`relative flex-shrink-0 transition-all duration-300 z-50 ${headerVisible ? 'px-4 py-4' : 'px-4 py-2 opacity-40 hover:opacity-100'}`}
+        className={`relative flex-shrink-0 transition-all duration-300 z-50 ${isDashboard ? 'px-8 py-6' : (headerVisible ? 'px-4 py-4' : 'px-4 py-2 opacity-40 hover:opacity-100')}`}
         onMouseEnter={() => setHeaderVisible(true)}
       >
-        <div className="flex items-center gap-2 relative">
-          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: colors.accent }} />
+        <div className="flex items-center gap-3 relative">
+          <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: colors.accent }} />
           
           <input
             ref={titleInputRef} value={titleValue} onChange={e => setTitleValue(e.target.value)}
@@ -145,15 +157,14 @@ export default function ZenWidget({
             onBlur={() => { editor?.setEditable(true); onUpdateTitle(titleValue); }}
             onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur(); }}
             onMouseDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}
-            className="flex-1 min-w-0 bg-transparent text-sm font-semibold text-white/90 hover:text-white focus:text-white outline-none border-b border-transparent focus:border-white/20 pb-0.5 truncate transition-all cursor-text relative z-50"
+            className={`flex-1 min-w-0 bg-transparent text-white/90 hover:text-white focus:text-white outline-none border-b border-transparent focus:border-white/20 truncate transition-all cursor-text relative z-50 ${isDashboard ? 'text-2xl font-bold py-1' : 'text-sm font-semibold pb-0.5'}`}
             maxLength={60} spellCheck={false} placeholder="Note Title..."
           />
           
           <div className="flex items-center gap-0.5 flex-shrink-0 relative z-50">
-            {/* 🌟 ORIGINAL ICONS & BUTTON SIZES */}
             <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAddNote(); }} className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/10" title="New Note"><Plus className="w-3.5 h-3.5" /></button>
             
-            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onShowNotes(); }} className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/10" title="Toggle Sidebar"><StickyNote className="w-3.5 h-3.5" /></button>
+            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onShowNotes(); }} className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/10" title={isDashboard ? "Toggle Sidebar" : "Open Main App"}><StickyNote className="w-3.5 h-3.5" /></button>
             
             <button onClick={() => setPanel(panel === 'history' ? 'none' : 'history')} className={`w-7 h-7 flex items-center justify-center rounded-md transition-all ${panel === 'history' ? 'text-violet-300 bg-violet-500/25' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`} title="Version history"><Clock className="w-3.5 h-3.5" /></button>
             
@@ -162,7 +173,6 @@ export default function ZenWidget({
               {panel === 'menu' && (
                 <div className="absolute right-0 top-full mt-1 w-44 bg-[#1a1a2e]/95 backdrop-blur-2xl border border-white/10 rounded-xl p-1 z-[60] shadow-2xl">
                   <MenuItem icon={<Pin className="w-3.5 h-3.5" />} label={note.isPinned ? 'Unpin' : 'Pin'} onClick={() => { onTogglePin(); setPanel('none'); }} />
-                  {/* 🌟 EXPAND/COLLAPSE COMPLETELY REMOVED FROM HERE */}
                   <div className="border-t border-white/5 my-1" />
                   <MenuItem icon={<Trash2 className="w-3.5 h-3.5" />} label="Delete" danger onClick={() => { onDelete(); setPanel('none'); }} />
                 </div>
@@ -177,7 +187,6 @@ export default function ZenWidget({
       </div>
       <div className="flex-shrink-0 h-px mx-4 bg-white/5" />
 
-      {/* 🌟 BULLETPROOF EDITOR CONTENT HEIGHT */}
       <div className="flex-1 overflow-hidden relative flex flex-col min-h-0 w-full">
         {panel === 'history' ? (
           <div className="flex-1 px-4 py-3 overflow-hidden">
@@ -188,7 +197,7 @@ export default function ZenWidget({
             <div className={`flex-shrink-0 pt-3 pb-1 transition-all px-4 ${toolbarVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
               <EditorToolbar editor={editor} />
             </div>
-            <div className="flex-1 overflow-y-auto tiptap-editor flex flex-col min-h-0 px-4 pb-4" onClick={(e) => { if (e.target === e.currentTarget) editor?.commands.focus(); }}>
+            <div className={`flex-1 overflow-y-auto tiptap-editor flex flex-col min-h-0 px-4 pb-4`} onClick={(e) => { if (e.target === e.currentTarget) editor?.commands.focus(); }}>
               <EditorContent editor={editor} className="flex-1 w-full h-full min-h-0" />
             </div>
           </div>
