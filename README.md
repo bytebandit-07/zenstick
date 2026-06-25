@@ -1,7 +1,7 @@
 # 🌟 ZenStick - The Glassmorphic Floating Notes App
 
 <div align="center">
-  <img src="<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/c8e411e2-6960-4f6f-bc6e-954deb03a200" />
+  <img src="<img width="1919" height="1079" alt="Screenshot 2026-06-25 122726" src="https://github.com/user-attachments/assets/19b73a73-1dba-4808-831e-f1378f06acf0" />
 " alt="ZenStick Main Dashboard" width="800"/>
 </div>
 
