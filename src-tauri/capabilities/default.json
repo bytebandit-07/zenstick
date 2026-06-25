@@ -3,12 +3,14 @@
   "identifier": "default",
   "description": "enables the default permissions",
   "windows": [
-    "main"
+    "main",
+    "widget"
   ],
   "permissions": [
     "core:default",
     "sql:default",
     "sql:allow-load",
-    "sql:allow-execute"
+    "sql:allow-execute",
+    "window-state:default"
   ]
 }

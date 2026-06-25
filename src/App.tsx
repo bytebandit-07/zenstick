@@ -1,3 +1,4 @@
+import { saveWindowState, StateFlags } from '@tauri-apps/plugin-window-state';
 import { useState, useEffect, useRef } from 'react';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { invoke } from '@tauri-apps/api/core';
@@ -27,9 +28,19 @@ export default function App() {
   const [windowLabel, setWindowLabel] = useState<string>('');
   const isIncomingSyncRef = useRef(false);
 
-  //  TUTORIAL STATE MANAGEMENT
+  // 🌟 USER NAME STATE MANAGEMENT
+  const [userName, setUserName] = useState<string>(() => {
+    return localStorage.getItem('zenstick:user_name') || '';
+  });
+
+  const handleUpdateUserName = (newName: string) => {
+    setUserName(newName);
+    localStorage.setItem('zenstick:user_name', newName);
+  };
+
+  // TUTORIAL STATE MANAGEMENT
   const [runTour, setRunTour] = useState(false);
-  const [tourKey, setTourKey] = useState(0); // new: to nreset the tour
+  const [tourKey, setTourKey] = useState(0);
 
   useEffect(() => {
     const checkAutostart = async () => {
@@ -42,6 +53,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    let unlistenMoved: Promise<() => void>;
+
     try {
       const appWindow = getCurrentWebviewWindow();
       const label = appWindow.label;
@@ -51,19 +64,33 @@ export default function App() {
         document.documentElement.style.background = 'transparent';
         document.body.style.background = 'transparent';
         document.body.className = ''; 
+
+        unlistenMoved = appWindow.onMoved(() => {
+          saveWindowState(StateFlags.POSITION);
+        });
+
       } else {
         document.body.className = 'wallpaper-bg';
       }
-    } catch (e) {}
-    return () => { document.body.className = ''; };
+    } catch (e) { console.error("Window setup error:", e); }
+
+    return () => { 
+      document.body.className = ''; 
+      if (unlistenMoved) {
+        unlistenMoved.then(unlisten => unlisten());
+      }
+    };
   }, []);
 
-  // Non-blocking Tutorial Trigger (First time user)
+  // 🌟 FIXED: Non-blocking Tutorial Trigger (Only fires strictly once)
   useEffect(() => {
     if (windowLabel === '' || windowLabel === 'widget') return;
 
     const hasSeenTutorial = localStorage.getItem('zenstick:tutorial_seen');
     if (!hasSeenTutorial) {
+      // FIX: Mark true immediately before timeout starts
+      localStorage.setItem('zenstick:tutorial_seen', 'true');
+      
       const timer = setTimeout(() => {
         setView('editor');
         setShowSidebar(true);
@@ -173,7 +200,6 @@ export default function App() {
     localStorage.setItem('zenstick:tutorial_seen', 'true');
   };
 
-  // FIX: force reset the component for guide button
   const handleManualTourStart = () => {
     setView('editor');
     setShowSidebar(true);
@@ -208,7 +234,6 @@ export default function App() {
 
   return (
     <div className="wallpaper-bg min-h-screen w-full overflow-hidden relative flex flex-col">
-      {/* Isolated Tutorial Render Area with tourKey */}
       <TutorialTour key={tourKey} run={runTour} onTourEnd={handleTourEnd} />
 
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -258,6 +283,8 @@ export default function App() {
             <div className="rounded-3xl border overflow-hidden h-full" style={{ background: 'rgba(15,12,41,0.82)', backdropFilter: 'blur(24px)', borderColor: 'rgba(255,255,255,0.10)', boxShadow: '0 32px 80px rgba(0,0,0,0.5)' }}>
               <DashboardView 
                 notes={notes}
+                userName={userName}
+                onUpdateUserName={handleUpdateUserName}
                 onSelectNote={(id) => { setActiveNoteId(id); setView('editor'); }}
                 onCreateNote={() => { handleAddNote('violet'); setView('editor'); }}
                 onViewAllNotes={() => { setView('editor'); setShowSidebar(true); }}
@@ -428,4 +455,4 @@ function StatRow({ label, value, color }: { label: string; value: string | numbe
       </span>
     </div>
   );
-}
+} 

@@ -1,29 +1,94 @@
+import { useState } from 'react';
 import { FileText, Pin, Clock, Plus, ArrowRight, Library, Sparkles } from 'lucide-react';
 import { Note, NOTE_COLORS } from '../types';
 
 interface DashboardViewProps {
   notes: Note[];
+  userName: string;
+  onUpdateUserName: (name: string) => void;
   onSelectNote: (id: string) => void;
   onCreateNote: () => void;
-  onViewAllNotes: () => void; //  Naya prop: View All Notes
+  onViewAllNotes: () => void;
 }
 
-export default function DashboardView({ notes, onSelectNote, onCreateNote, onViewAllNotes }: DashboardViewProps) {
+export default function DashboardView({ notes, userName, onUpdateUserName, onSelectNote, onCreateNote, onViewAllNotes }: DashboardViewProps) {
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState(userName);
+
   const pinnedCount = notes.filter(n => n.isPinned).length;
   const totalSnapshots = notes.reduce((acc, n) => acc + n.snapshots.length, 0);
-  const recentNotes = notes.slice(0, 4); // Top 4 recent notes
+  const recentNotes = notes.slice(0, 4); 
 
-  const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening';
+  //  DYNAMIC GREETING LOGIC
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'Good Morning';
+    if (hour >= 12 && hour < 17) return 'Good Afternoon';
+    if (hour >= 17 && hour < 21) return 'Good Evening';
+    return 'Good Night';
+  };
+
+  const handleSaveName = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (nameInput.trim()) {
+      onUpdateUserName(nameInput.trim());
+      setIsEditingName(false);
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-[#0a0a16]/40 text-white/90 p-8 overflow-y-auto custom-scrollbar">
       
-      {/* GREETING SECTION */}
+      {/*  GREETING SECTION */}
       <div className="mb-8 animate-fade-in">
-        <h1 className="text-3xl font-bold tracking-tight mb-2 flex items-center gap-3">
-          {greeting}, Talal <Sparkles className="w-6 h-6 text-violet-400" />
-        </h1>
-        <p className="text-white/40 text-sm">Here is a quick overview of your ZenStick workspace.</p>
+        {!userName ? (
+          <form onSubmit={handleSaveName} className="flex flex-col gap-2 max-w-xs">
+            <label className="text-xs text-white/40 uppercase tracking-widest font-semibold">What should we call you?</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                placeholder="Enter your name..."
+                className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-sm text-white focus:outline-none focus:border-violet-500 flex-1"
+                autoFocus
+              />
+              <button type="submit" className="bg-violet-500 hover:bg-violet-600 text-white px-4 py-1.5 rounded-xl text-xs font-semibold transition-all">
+                Save
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="group space-y-2">
+            <div className="flex items-center gap-3">
+              {isEditingName ? (
+                <form onSubmit={handleSaveName} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={nameInput}
+                    onChange={(e) => setNameInput(e.target.value)}
+                    className="bg-white/5 border border-violet-500 rounded-xl px-3 py-1 text-3xl font-bold text-white focus:outline-none tracking-tight"
+                    autoFocus
+                    onBlur={() => setIsEditingName(false)}
+                  />
+                </form>
+              ) : (
+                <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+                  {getGreeting()}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400">{userName}</span> <Sparkles className="w-6 h-6 text-violet-400" />
+                </h1>
+              )}
+              {!isEditingName && (
+                <button 
+                  onClick={() => { setNameInput(userName); setIsEditingName(true); }}
+                  className="text-[10px] bg-white/5 border border-white/10 text-white/40 hover:text-white/80 hover:bg-white/10 px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-all"
+                >
+                  Edit Name
+                </button>
+              )}
+            </div>
+            <p className="text-white/40 text-sm">Here is a quick overview of your ZenStick workspace.</p>
+          </div>
+        )}
       </div>
 
       {/* STATS CARDS */}
