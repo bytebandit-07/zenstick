@@ -6,13 +6,14 @@ import TaskItem from '@tiptap/extension-task-item';
 import Placeholder from '@tiptap/extension-placeholder';
 import {
   Clock, MoreVertical, Pin, Trash2,
-  StickyNote, Minus, Plus, Maximize2
+  StickyNote, Minus, Plus, Maximize2, Download
 } from 'lucide-react';
 import { Note, NOTE_COLORS, Snapshot } from '../types';
 import EditorToolbar from './EditorToolbar';
 import HistoryPanel from './HistoryPanel';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { LogicalSize } from '@tauri-apps/api/dpi';
+import TurndownService from 'turndown';
 
 interface ZenWidgetProps {
   note: Note;
@@ -38,6 +39,9 @@ export default function ZenWidget({
   const [titleValue, setTitleValue] = useState(note.title);
   const [headerVisible, setHeaderVisible] = useState(true);
   const [toolbarVisible, setToolbarVisible] = useState(false);
+  
+  // 🌟 FIX: New State for Animated Success Toast
+  const [showSuccess, setShowSuccess] = useState(false);
   
   const [isWidgetMode, setIsWidgetMode] = useState(false);
   const isDashboard = !isWidgetMode;
@@ -68,7 +72,6 @@ export default function ZenWidget({
       onUpdateContent(newHtml);
     },
     onFocus: () => setToolbarVisible(true),
-    // Toolbar ko hide karne ka delay thora barha diya hai taake click karte waqt flickering na ho
     onBlur: () => setTimeout(() => setToolbarVisible(false), 200),
     editorProps: { attributes: { class: 'tiptap-editor', spellcheck: 'true' } },
   });
@@ -104,6 +107,32 @@ export default function ZenWidget({
         }
       }
     } catch (e) { console.error("Resize error:", e); }
+  };
+
+  const handleExportMarkdown = () => {
+    try {
+      const turndownService = new TurndownService({
+        headingStyle: 'atx',
+        codeBlockStyle: 'fenced'
+      });
+      const markdown = turndownService.turndown(note.currentContent || '');
+      
+      const blob = new Blob([markdown], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${note.title || 'ZenStick_Note'}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setPanel('none');
+      
+      // 🌟 FIX: Trigger the success animation pop-up
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 2500); // 2.5 seconds baad gayab
+    } catch (e) {
+      console.error("Markdown export failed:", e);
+      alert("Failed to export markdown.");
+    }
   };
 
   const wordCount = editor ? editor.getText().trim().split(/\s+/).filter(Boolean).length : 0;
@@ -167,8 +196,9 @@ export default function ZenWidget({
             <div className="relative">
               <button onClick={() => setPanel(panel === 'menu' ? 'none' : 'menu')} className={`w-7 h-7 flex items-center justify-center rounded-md transition-all ${panel === 'menu' ? 'text-white bg-white/15' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`} title="More options"><MoreVertical className="w-3.5 h-3.5" /></button>
               {panel === 'menu' && (
-                <div className="absolute right-0 top-full mt-1 w-44 bg-[#1a1a2e]/95 backdrop-blur-2xl border border-white/10 rounded-xl p-1 z-[60] shadow-2xl">
+                <div className="absolute right-0 top-full mt-1 w-48 bg-[#1a1a2e]/95 backdrop-blur-2xl border border-white/10 rounded-xl p-1 z-[60] shadow-2xl">
                   <MenuItem icon={<Pin className="w-3.5 h-3.5" />} label={note.isPinned ? 'Unpin' : 'Pin'} onClick={() => { onTogglePin(); setPanel('none'); }} />
+                  <MenuItem icon={<Download className="w-3.5 h-3.5" />} label="Export Markdown" onClick={handleExportMarkdown} />
                   <div className="border-t border-white/5 my-1" />
                   <MenuItem icon={<Trash2 className="w-3.5 h-3.5" />} label="Delete" danger onClick={() => { onDelete(); setPanel('none'); }} />
                 </div>
@@ -184,13 +214,33 @@ export default function ZenWidget({
       <div className="flex-shrink-0 h-px mx-4 bg-white/5" />
 
       <div className="flex-1 overflow-hidden relative flex flex-col min-h-0 w-full">
+        
+        {/* 🌟 FIX: The Success Toast Pop-up Animation */}
+        <div 
+          className={`absolute bottom-6 left-1/2 -translate-x-1/2 z-[70] transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+            showSuccess ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-8 opacity-0 scale-95 pointer-events-none'
+          }`}
+        >
+          <div className="flex items-center gap-2.5 px-4 py-2.5 bg-emerald-500/20 border border-emerald-500/30 rounded-2xl backdrop-blur-xl shadow-[0_8px_30px_rgba(16,185,129,0.2)]">
+            {/* Custom SVG for drawing circle and then tick */}
+            <svg className="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              {showSuccess && (
+                <>
+                  <path className="circle-draw" d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+                  <path className="check-draw" d="M8 12l3 3 5-5" />
+                </>
+              )}
+            </svg>
+            <span className="text-xs font-bold tracking-wide text-emerald-200">Exported to Markdown!</span>
+          </div>
+        </div>
+
         {panel === 'history' ? (
           <div className="flex-1 px-4 py-3 overflow-hidden">
             <HistoryPanel note={note} onClose={() => setPanel('none')} onRestore={handleRestoreSnapshot} onDelete={onDeleteSnapshot} />
           </div>
         ) : (
           <div className="flex-1 flex flex-col min-h-0 w-full h-full">
-            {/* 🌟 FIX: CSS Grid lagaya hai taake toolbar smoothly 0 height par collapse ho jaye */}
             <div 
               className="transition-all duration-300 ease-in-out grid flex-shrink-0"
               style={{
@@ -207,7 +257,6 @@ export default function ZenWidget({
               </div>
             </div>
             
-            {/* Editor Text Area */}
             <div 
               className="flex-1 overflow-y-auto tiptap-editor flex flex-col min-h-0 px-4 pb-4 pt-2" 
               onClick={(e) => { if (e.target === e.currentTarget) editor?.commands.focus(); }}
@@ -228,6 +277,23 @@ export default function ZenWidget({
       </div>
 
       {panel === 'menu' && <div className="fixed inset-0 z-40" onClick={() => setPanel('none')} />}
+
+      {/* 🌟 FIX: CSS for the SVG Animation */}
+      <style>{`
+        .circle-draw {
+          stroke-dasharray: 100;
+          stroke-dashoffset: 100;
+          animation: draw 0.4s ease-out forwards;
+        }
+        .check-draw {
+          stroke-dasharray: 20;
+          stroke-dashoffset: 20;
+          animation: draw 0.3s ease-out forwards 0.35s; /* Delays until circle is drawn */
+        }
+        @keyframes draw {
+          to { stroke-dashoffset: 0; }
+        }
+      `}</style>
     </div>
   );
 }

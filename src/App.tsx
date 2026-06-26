@@ -11,7 +11,11 @@ import NotesSidebar from './components/NotesSidebar';
 import DashboardView from './components/DashboardView';
 import TutorialTour from './components/TutorialTour';
 import { NOTE_COLORS } from './types';
-import { Activity, StickyNote, Info, Cpu, Zap, Shield, ExternalLink, PanelLeftClose, PanelLeftOpen, HelpCircle } from 'lucide-react';
+// 🌟 FIX: Added Trash2 to imports for the modal
+import { Activity, StickyNote, Info, Cpu, Zap, Shield, ExternalLink, PanelLeftClose, PanelLeftOpen, HelpCircle, Trash2 } from 'lucide-react';
+
+import { useShortcuts, matchShortcut } from './hooks/useShortcuts';
+import ShortcutManager from './components/ShortcutManager';
 
 type View = 'editor' | 'dashboard';
 
@@ -22,10 +26,16 @@ export default function App() {
     togglePin, addNote, deleteNote, restoreSnapshot, deleteSnapshot,
   } = useNotes();
 
+  const { shortcuts, updateShortcut } = useShortcuts();
+
   const [view, setView] = useState<View>('dashboard');
   const [showSidebar, setShowSidebar] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [windowLabel, setWindowLabel] = useState<string>('');
+  
+  // 🌟 FIX: State for Delete Confirmation Modal
+  const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
+  
   const isIncomingSyncRef = useRef(false);
 
   const [userName, setUserName] = useState<string>(() => {
@@ -66,7 +76,6 @@ export default function App() {
         unlistenMoved = appWindow.onMoved(() => {
           saveWindowState(StateFlags.POSITION);
         });
-
       } else {
         document.body.className = 'wallpaper-bg';
       }
@@ -82,11 +91,9 @@ export default function App() {
 
   useEffect(() => {
     if (windowLabel === '' || windowLabel === 'widget') return;
-
     const hasSeenTutorial = localStorage.getItem('zenstick:tutorial_seen');
     if (!hasSeenTutorial) {
       localStorage.setItem('zenstick:tutorial_seen', 'true');
-      
       const timer = setTimeout(() => {
         setView('editor');
         setShowSidebar(true);
@@ -157,9 +164,41 @@ export default function App() {
     }
   }, [activeNoteId, windowLabel]);
 
+  // 🌟 FIX: Updated Global Keydown Listener for Enter/Escape when Modal is open
   useEffect(() => {
-    if (windowLabel === 'widget' && !activeNoteId && notes.length > 0) setActiveNoteId(notes[0].id);
-  }, [windowLabel, activeNoteId, notes, setActiveNoteId]);
+    const handleGlobalKeydown = (e: KeyboardEvent) => {
+      // 1. If Delete Modal is open, intercept Enter and Esc keys
+      if (noteToDelete) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          deleteNote(noteToDelete);
+          setNoteToDelete(null);
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          setNoteToDelete(null);
+        }
+        return; // Stop processing other shortcuts while modal is open
+      }
+
+      // 2. Normal Shortcuts
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        if (!e.ctrlKey && !e.altKey && !e.metaKey) return; 
+      }
+
+      if (matchShortcut(e, shortcuts.newNote)) { e.preventDefault(); handleAddNote('violet'); }
+      else if (matchShortcut(e, shortcuts.sidebar)) { e.preventDefault(); setShowSidebar(!showSidebar); }
+      else if (matchShortcut(e, shortcuts.widget)) { e.preventDefault(); openFloatingWidget(); }
+      else if (matchShortcut(e, shortcuts.search)) { e.preventDefault(); document.getElementById('search-input')?.focus(); }
+      else if (matchShortcut(e, shortcuts.deleteNote)) { 
+        e.preventDefault(); 
+        if (activeNoteId) setNoteToDelete(activeNoteId); 
+      }
+    };
+    
+    window.addEventListener('keydown', handleGlobalKeydown);
+    return () => window.removeEventListener('keydown', handleGlobalKeydown);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shortcuts, showSidebar, noteToDelete, activeNoteId, deleteNote]); 
 
   const handleAddNote = async (color: any = 'violet') => {
     const newId = await addNote(color);
@@ -216,7 +255,8 @@ export default function App() {
             onRestoreSnapshot={snap => restoreSnapshot(activeNote.id, snap)}
             onDeleteSnapshot={id => deleteSnapshot(activeNote.id, id)}
             onTogglePin={() => togglePin(activeNote.id)}
-            onDelete={() => deleteNote(activeNote.id)}
+            // Widget delete requests modal too
+            onDelete={() => setNoteToDelete(activeNote.id)}
             onAddNote={() => handleAddNote('violet')}
             onShowNotes={() => invoke('swap_to_main')}
             isSaving={isSaving}
@@ -228,8 +268,7 @@ export default function App() {
     );
   }
 
- return (
-    //  FIX: Changed 'min-h-screen' to 'h-screen' to lock the app height and force the sidebar to scroll!
+  return (
     <div className="wallpaper-bg h-screen w-full overflow-hidden relative flex flex-col">
       <TutorialTour key={tourKey} run={runTour} onTourEnd={handleTourEnd} />
 
@@ -303,7 +342,7 @@ export default function App() {
                   activeNoteId={activeNoteId} 
                   onSelectNote={id => setActiveNoteId(id)} 
                   onAddNote={(color) => handleAddNote(color)} 
-                  onDeleteNote={deleteNote} 
+                  onDeleteNote={id => setNoteToDelete(id)} // 🌟 FIX: Routes delete to Modal
                   onTogglePin={togglePin} 
                   onClose={() => setShowSidebar(false)} 
                 />
@@ -337,7 +376,7 @@ export default function App() {
                       onRestoreSnapshot={snap => restoreSnapshot(activeNote.id, snap)}
                       onDeleteSnapshot={id => deleteSnapshot(activeNote.id, id)}
                       onTogglePin={() => togglePin(activeNote.id)}
-                      onDelete={() => deleteNote(activeNote.id)}
+                      onDelete={() => setNoteToDelete(activeNote.id)} // 🌟 FIX: Routes delete to Modal
                       onAddNote={() => handleAddNote('violet')}
                       onShowNotes={() => setShowSidebar(!showSidebar)}
                       isSaving={isSaving}
@@ -367,17 +406,7 @@ export default function App() {
                 </div>
               )}
 
-              <div className="rounded-2xl border p-4" style={{ background: 'rgba(15, 12, 41, 0.70)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.08)' }}>
-                <div className="flex items-center gap-1.5 mb-3">
-                  <Info className="w-3 h-3 text-white/30" />
-                  <p className="text-[9px] font-semibold text-white/30 uppercase tracking-widest">Shortcuts</p>
-                </div>
-                <div className="space-y-2">
-                   <ShortcutRow keyStr="Ctrl+B" label="Bold" />
-                   <ShortcutRow keyStr="Ctrl+I" label="Italic" />
-                   <ShortcutRow keyStr="# Space" label="H1" />
-                </div>
-              </div>
+              <ShortcutManager shortcuts={shortcuts} onUpdateShortcut={updateShortcut} />
 
               {activeNote && (
                 <div className="rounded-2xl border p-4" style={{ background: 'rgba(15, 12, 41, 0.70)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.08)' }}>
@@ -406,15 +435,38 @@ export default function App() {
         </p>
       </div>
 
-    </div>
-  );
-}
+      {/* 🌟 FIX: Beautiful Glassmorphic Delete Confirmation Modal */}
+      {noteToDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-[#1a1a2e]/95 border border-red-500/30 rounded-3xl p-6 max-w-[320px] w-full mx-4 shadow-[0_32px_80px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-4 mb-5">
+              <div className="w-12 h-12 rounded-full bg-red-500/20 border border-red-500/20 flex items-center justify-center flex-shrink-0 shadow-inner">
+                <Trash2 className="w-5 h-5 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white tracking-wide">Delete Note?</h3>
+                <p className="text-[11px] text-white/50 mt-0.5">This action cannot be undone.</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+              <button
+                onClick={() => setNoteToDelete(null)}
+                className="px-4 py-2 rounded-xl text-xs font-medium text-white/50 hover:text-white hover:bg-white/10 transition-all focus:outline-none"
+              >
+                Cancel <span className="text-[9px] font-mono opacity-50 ml-1">ESC</span>
+              </button>
+              <button
+                onClick={() => { deleteNote(noteToDelete); setNoteToDelete(null); }}
+                className="px-4 py-2 rounded-xl text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 hover:shadow-[0_0_15px_rgba(239,68,68,0.3)] transition-all flex items-center gap-1.5 focus:outline-none"
+              >
+                Delete <span className="text-[9px] font-mono opacity-60 ml-1">ENTER</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-function ShortcutRow({ keyStr, label }: { keyStr: string, label: string }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-[9px] font-mono bg-white/8 text-white/50 px-1.5 py-0.5 rounded">{keyStr}</span>
-      <span className="text-[9px] text-white/35">{label}</span>
     </div>
   );
 }
