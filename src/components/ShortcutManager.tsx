@@ -51,7 +51,7 @@ export default function ShortcutManager({ shortcuts, onUpdateShortcut }: Shortcu
 
   return (
     <div className="rounded-2xl border flex flex-col max-h-[350px]" style={{ background: 'rgba(15, 12, 41, 0.70)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.08)' }}>
-      {/* 🌟 Custom Shortcuts Section */}
+      {/*  Custom Shortcuts Section */}
       <div className="p-4 pb-2 flex-shrink-0">
         <div className="flex items-center gap-1.5 mb-3">
           <Keyboard className="w-3 h-3 text-white/30" />
@@ -79,7 +79,7 @@ export default function ShortcutManager({ shortcuts, onUpdateShortcut }: Shortcu
         </div>
       </div>
 
-      {/* 🌟 Editor Fixed Shortcuts Section (Scrollable) */}
+      {/* Editor Fixed Shortcuts Section (Scrollable) */}
       <div className="p-4 pt-2 flex-1 overflow-hidden flex flex-col border-t border-white/5 mt-2">
         <div className="flex items-center gap-1.5 mb-2 flex-shrink-0">
           <Info className="w-3 h-3 text-white/30" />
@@ -107,7 +107,7 @@ export default function ShortcutManager({ shortcuts, onUpdateShortcut }: Shortcu
   );
 }
 
-// 🌟 Local ShortcutRow component for cleaner code
+//  Local ShortcutRow component for cleaner code
 function ShortcutRow({ keyStr, label }: { keyStr: string, label: string }) {
   return (
     <div className="flex items-center justify-between">

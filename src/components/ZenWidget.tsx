@@ -40,7 +40,7 @@ export default function ZenWidget({
   const [headerVisible, setHeaderVisible] = useState(true);
   const [toolbarVisible, setToolbarVisible] = useState(false);
   
-  // 🌟 FIX: New State for Animated Success Toast
+  //  FIX: New State for Animated Success Toast
   const [showSuccess, setShowSuccess] = useState(false);
   
   const [isWidgetMode, setIsWidgetMode] = useState(false);
@@ -126,9 +126,9 @@ export default function ZenWidget({
       URL.revokeObjectURL(url);
       setPanel('none');
       
-      // 🌟 FIX: Trigger the success animation pop-up
+      //  FIX: Trigger the success animation pop-up
       setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 2500); // 2.5 seconds baad gayab
+      setTimeout(() => setShowSuccess(false), 2500); // Hide after 2.5 seconds
     } catch (e) {
       console.error("Markdown export failed:", e);
       alert("Failed to export markdown.");
@@ -215,7 +215,7 @@ export default function ZenWidget({
 
       <div className="flex-1 overflow-hidden relative flex flex-col min-h-0 w-full">
         
-        {/* 🌟 FIX: The Success Toast Pop-up Animation */}
+        {/*  FIX: The Success Toast Pop-up Animation */}
         <div 
           className={`absolute bottom-6 left-1/2 -translate-x-1/2 z-[70] transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
             showSuccess ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-8 opacity-0 scale-95 pointer-events-none'
@@ -278,7 +278,7 @@ export default function ZenWidget({
 
       {panel === 'menu' && <div className="fixed inset-0 z-40" onClick={() => setPanel('none')} />}
 
-      {/* 🌟 FIX: CSS for the SVG Animation */}
+      {/* FIX: CSS for the SVG Animation */}
       <style>{`
         .circle-draw {
           stroke-dasharray: 100;

@@ -5,7 +5,7 @@ export type Shortcuts = {
   search: string;
   sidebar: string;
   widget: string;
-  deleteNote: string; // 🌟 FIX: New delete shortcut
+  deleteNote: string; //  FIX: New delete shortcut
 };
 
 const defaultShortcuts: Shortcuts = {
@@ -13,13 +13,13 @@ const defaultShortcuts: Shortcuts = {
   search: 'Alt+F',
   sidebar: 'Alt+S',
   widget: 'Alt+W',
-  deleteNote: 'Alt+D', // 🌟 Default is Alt+D
+  deleteNote: 'Alt+D',  
 };
 
 export function useShortcuts() {
   const [shortcuts, setShortcuts] = useState<Shortcuts>(() => {
     const saved = localStorage.getItem('zenstick:shortcuts');
-    // 🌟 FIX: Safely merge old saved shortcuts with new ones
+    //  FIX: Safely merge old saved shortcuts with new ones
     if (saved) {
       const parsed = JSON.parse(saved);
       return { ...defaultShortcuts, ...parsed }; 

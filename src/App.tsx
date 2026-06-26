@@ -11,7 +11,7 @@ import NotesSidebar from './components/NotesSidebar';
 import DashboardView from './components/DashboardView';
 import TutorialTour from './components/TutorialTour';
 import { NOTE_COLORS } from './types';
-// 🌟 FIX: Added Trash2 to imports for the modal
+//  FIX: Added Trash2 to imports for the modal
 import { Activity, StickyNote, Info, Cpu, Zap, Shield, ExternalLink, PanelLeftClose, PanelLeftOpen, HelpCircle, Trash2 } from 'lucide-react';
 
 import { useShortcuts, matchShortcut } from './hooks/useShortcuts';
@@ -33,7 +33,7 @@ export default function App() {
   const [isSaving, setIsSaving] = useState(false);
   const [windowLabel, setWindowLabel] = useState<string>('');
   
-  // 🌟 FIX: State for Delete Confirmation Modal
+  //  FIX: State for Delete Confirmation Modal
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
   
   const isIncomingSyncRef = useRef(false);
@@ -164,7 +164,7 @@ export default function App() {
     }
   }, [activeNoteId, windowLabel]);
 
-  // 🌟 FIX: Updated Global Keydown Listener for Enter/Escape when Modal is open
+  //  FIX: Updated Global Keydown Listener for Enter/Escape when Modal is open
   useEffect(() => {
     const handleGlobalKeydown = (e: KeyboardEvent) => {
       // 1. If Delete Modal is open, intercept Enter and Esc keys
@@ -342,7 +342,7 @@ export default function App() {
                   activeNoteId={activeNoteId} 
                   onSelectNote={id => setActiveNoteId(id)} 
                   onAddNote={(color) => handleAddNote(color)} 
-                  onDeleteNote={id => setNoteToDelete(id)} // 🌟 FIX: Routes delete to Modal
+                  onDeleteNote={id => setNoteToDelete(id)} //  FIX: Routes delete to Modal
                   onTogglePin={togglePin} 
                   onClose={() => setShowSidebar(false)} 
                 />
@@ -435,7 +435,7 @@ export default function App() {
         </p>
       </div>
 
-      {/* 🌟 FIX: Beautiful Glassmorphic Delete Confirmation Modal */}
+      {/*  FIX: Beautiful Glassmorphic Delete Confirmation Modal */}
       {noteToDelete && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-[#1a1a2e]/95 border border-red-500/30 rounded-3xl p-6 max-w-[320px] w-full mx-4 shadow-[0_32px_80px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-200">
