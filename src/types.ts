@@ -24,6 +24,8 @@ export interface Note {
   snapshots: Snapshot[];
   currentContent: string;
   isPinned: boolean;
+  isTrashed?: boolean; 
+  deletedAt?: Date | null;
 }
 
 export type NoteColor =

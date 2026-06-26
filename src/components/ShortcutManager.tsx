@@ -46,7 +46,8 @@ export default function ShortcutManager({ shortcuts, onUpdateShortcut }: Shortcu
     search: 'Search Notes',
     sidebar: 'Toggle Sidebar',
     widget: 'Launch Widget',
-    deleteNote: 'Delete Note'
+    deleteNote: 'Delete Note',
+    settings: 'Toggle Settings'
   };
 
   return (

@@ -11,8 +11,8 @@ import NotesSidebar from './components/NotesSidebar';
 import DashboardView from './components/DashboardView';
 import TutorialTour from './components/TutorialTour';
 import { NOTE_COLORS } from './types';
-//  FIX: Added Trash2 to imports for the modal
-import { Activity, StickyNote, Info, Cpu, Zap, Shield, ExternalLink, PanelLeftClose, PanelLeftOpen, HelpCircle, Trash2 } from 'lucide-react';
+// 🌟 FIX: Added Settings2 for the new Right Sidebar toggle
+import { Activity, StickyNote, Info, Cpu, Zap, Shield, ExternalLink, PanelLeftClose, PanelLeftOpen, HelpCircle, Trash2, Settings2 } from 'lucide-react';
 
 import { useShortcuts, matchShortcut } from './hooks/useShortcuts';
 import ShortcutManager from './components/ShortcutManager';
@@ -20,20 +20,25 @@ import ShortcutManager from './components/ShortcutManager';
 type View = 'editor' | 'dashboard';
 
 export default function App() {
+  // 🌟 FIX: Extracted all new Trash functions from useNotes
   const {
-    notes, activeNote, activeNoteId, setActiveNoteId,
+    notes, trashedNotes, activeNote, activeNoteId, setActiveNoteId,
     updateNoteContent, updateNoteTitle, updateNoteColor,
-    togglePin, addNote, deleteNote, restoreSnapshot, deleteSnapshot,
+    togglePin, addNote, deleteNote, restoreNote, permanentDeleteNote, emptyTrash,
+    restoreSnapshot, deleteSnapshot,
   } = useNotes();
 
   const { shortcuts, updateShortcut } = useShortcuts();
 
   const [view, setView] = useState<View>('dashboard');
   const [showSidebar, setShowSidebar] = useState(true);
+  
+  // 🌟 FIX: State to hide/show the Right Utility Sidebar
+  const [showRightSidebar, setShowRightSidebar] = useState(false);
+  
   const [isSaving, setIsSaving] = useState(false);
   const [windowLabel, setWindowLabel] = useState<string>('');
   
-  //  FIX: State for Delete Confirmation Modal
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
   
   const isIncomingSyncRef = useRef(false);
@@ -164,23 +169,20 @@ export default function App() {
     }
   }, [activeNoteId, windowLabel]);
 
-  //  FIX: Updated Global Keydown Listener for Enter/Escape when Modal is open
-  useEffect(() => {
+ useEffect(() => {
     const handleGlobalKeydown = (e: KeyboardEvent) => {
-      // 1. If Delete Modal is open, intercept Enter and Esc keys
       if (noteToDelete) {
         if (e.key === 'Enter') {
           e.preventDefault();
-          deleteNote(noteToDelete);
+          deleteNote(noteToDelete); // 🌟 FIX: This now moves to trash
           setNoteToDelete(null);
         } else if (e.key === 'Escape') {
           e.preventDefault();
           setNoteToDelete(null);
         }
-        return; // Stop processing other shortcuts while modal is open
+        return; 
       }
 
-      // 2. Normal Shortcuts
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         if (!e.ctrlKey && !e.altKey && !e.metaKey) return; 
       }
@@ -193,19 +195,24 @@ export default function App() {
         e.preventDefault(); 
         if (activeNoteId) setNoteToDelete(activeNoteId); 
       }
+      //  FIX: Yeh nayi line add kardi Settings toggle karne ke liye
+      else if (matchShortcut(e, shortcuts.settings)) { 
+        e.preventDefault(); 
+        setShowRightSidebar(prev => !prev); 
+      }
     };
     
     window.addEventListener('keydown', handleGlobalKeydown);
     return () => window.removeEventListener('keydown', handleGlobalKeydown);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shortcuts, showSidebar, noteToDelete, activeNoteId, deleteNote]); 
+  //  FIX: Dependency list mein showRightSidebar bhi add kar diya
+  }, [shortcuts, showSidebar, showRightSidebar, noteToDelete, activeNoteId, deleteNote]); 
 
   const handleAddNote = async (color: any = 'violet') => {
     const newId = await addNote(color);
     localStorage.setItem('zenstick:active_id', newId);
     emit('sync_active_id', { id: newId, origin: windowLabel });
   };
-
   const handleUpdateContent = (content: string) => {
     if (!activeNote) return;
     updateNoteContent(activeNote.id, content);
@@ -255,7 +262,6 @@ export default function App() {
             onRestoreSnapshot={snap => restoreSnapshot(activeNote.id, snap)}
             onDeleteSnapshot={id => deleteSnapshot(activeNote.id, id)}
             onTogglePin={() => togglePin(activeNote.id)}
-            // Widget delete requests modal too
             onDelete={() => setNoteToDelete(activeNote.id)}
             onAddNote={() => handleAddNote('violet')}
             onShowNotes={() => invoke('swap_to_main')}
@@ -337,12 +343,17 @@ export default function App() {
               }`}
             >
               <div className="w-[260px] h-full rounded-2xl border flex flex-col" style={{ background: 'rgba(15,12,41,0.85)', backdropFilter: 'blur(24px)', borderColor: 'rgba(255,255,255,0.10)', boxShadow: '0 32px 80px rgba(0,0,0,0.5)', padding: '16px' }}>
+                {/* 🌟 FIX: Updated NotesSidebar with new Trash Props */}
                 <NotesSidebar 
                   notes={notes} 
+                  trashedNotes={trashedNotes}
                   activeNoteId={activeNoteId} 
                   onSelectNote={id => setActiveNoteId(id)} 
                   onAddNote={(color) => handleAddNote(color)} 
-                  onDeleteNote={id => setNoteToDelete(id)} //  FIX: Routes delete to Modal
+                  onDeleteNote={id => setNoteToDelete(id)} 
+                  onRestoreNote={restoreNote}
+                  onPermanentDeleteNote={permanentDeleteNote}
+                  onEmptyTrash={emptyTrash}
                   onTogglePin={togglePin} 
                   onClose={() => setShowSidebar(false)} 
                 />
@@ -351,18 +362,36 @@ export default function App() {
 
             <div className="flex-1 flex flex-col min-w-0 min-h-0 h-full">
               
-              <div className="flex-shrink-0 pb-3 flex items-center gap-3">
-                <button 
-                  data-tour="sidebar-toggle"
-                  onClick={() => setShowSidebar(!showSidebar)}
-                  className="flex items-center justify-center w-9 h-9 rounded-xl border border-white/10 bg-black/20 hover:bg-white/10 text-white/60 hover:text-white transition-all shadow-sm"
-                  title={showSidebar ? "Close Sidebar" : "Open Sidebar"}
-                >
-                  {showSidebar ? <PanelLeftClose className="w-4.5 h-4.5" /> : <PanelLeftOpen className="w-4.5 h-4.5" />}
-                </button>
-                <span className="text-xs font-semibold text-white/30 uppercase tracking-widest">
-                  {activeNote ? 'Active Workspace' : 'Editor'}
-                </span>
+              <div className="flex-shrink-0 pb-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <button 
+                    data-tour="sidebar-toggle"
+                    onClick={() => setShowSidebar(!showSidebar)}
+                    className="flex items-center justify-center w-9 h-9 rounded-xl border border-white/10 bg-black/20 hover:bg-white/10 text-white/60 hover:text-white transition-all shadow-sm"
+                    title={showSidebar ? "Close Sidebar" : "Open Sidebar"}
+                  >
+                    {showSidebar ? <PanelLeftClose className="w-4.5 h-4.5" /> : <PanelLeftOpen className="w-4.5 h-4.5" />}
+                  </button>
+                  <span className="text-xs font-semibold text-white/30 uppercase tracking-widest">
+                    {activeNote ? 'Active Workspace' : 'Editor'}
+                  </span>
+                </div>
+
+                {/* 🌟 FIX: Toggle Button for Right Utility Sidebar */}
+                {activeNote && (
+                  <button
+                    onClick={() => setShowRightSidebar(!showRightSidebar)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all shadow-sm ${
+                      showRightSidebar 
+                        ? 'bg-violet-500/20 border-violet-500/30 text-violet-300' 
+                        : 'bg-black/20 border-white/10 text-white/50 hover:text-white hover:bg-white/10'
+                    }`}
+                    title="Toggle Utilities"
+                  >
+                    <Settings2 className="w-3.5 h-3.5" />
+                    <span className="text-xs font-medium">Settings</span>
+                  </button>
+                )}
               </div>
 
               <div className="flex-1 min-h-0 w-full flex justify-center">
@@ -376,7 +405,7 @@ export default function App() {
                       onRestoreSnapshot={snap => restoreSnapshot(activeNote.id, snap)}
                       onDeleteSnapshot={id => deleteSnapshot(activeNote.id, id)}
                       onTogglePin={() => togglePin(activeNote.id)}
-                      onDelete={() => setNoteToDelete(activeNote.id)} // 🌟 FIX: Routes delete to Modal
+                      onDelete={() => setNoteToDelete(activeNote.id)} 
                       onAddNote={() => handleAddNote('violet')}
                       onShowNotes={() => setShowSidebar(!showSidebar)}
                       isSaving={isSaving}
@@ -394,30 +423,38 @@ export default function App() {
 
             </div>
 
-            <div className="w-[220px] flex-shrink-0 h-full overflow-y-auto custom-scrollbar flex flex-col gap-4 pr-2">
-              {activeNote && (
-                <div className="rounded-2xl border p-4" style={{ background: 'rgba(15, 12, 41, 0.70)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.08)' }}>
-                  <p className="text-[9px] font-semibold text-white/30 uppercase tracking-widest mb-3">Note Color</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(Object.entries(NOTE_COLORS) as [keyof typeof NOTE_COLORS, typeof NOTE_COLORS[keyof typeof NOTE_COLORS]][]).map(([key, val]) => (
-                      <button key={key} onClick={() => updateNoteColor(activeNote.id, key)} title={val.label} className={['w-10 h-10 rounded-xl border-2 transition-all hover:scale-105', activeNote.color === key ? 'scale-105 ring-2 ring-offset-1 ring-offset-transparent' : ''].join(' ')} style={{ background: val.bg, borderColor: val.accent }} />
-                    ))}
+            {/* 🌟 FIX: Right Utility Sidebar wrapped in a toggleable container */}
+            <div 
+              className={`transition-all duration-300 ease-in-out flex-shrink-0 overflow-hidden ${
+                showRightSidebar ? 'w-[240px] opacity-100' : 'w-0 opacity-0'
+              }`}
+            >
+              <div className="w-[240px] h-full overflow-y-auto custom-scrollbar flex flex-col gap-4 pr-1 pb-2">
+                {activeNote && (
+                  <div className="rounded-2xl border p-4" style={{ background: 'rgba(15, 12, 41, 0.70)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.08)' }}>
+                    <p className="text-[9px] font-semibold text-white/30 uppercase tracking-widest mb-3">Note Color</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(Object.entries(NOTE_COLORS) as [keyof typeof NOTE_COLORS, typeof NOTE_COLORS[keyof typeof NOTE_COLORS]][]).map(([key, val]) => (
+                        <button key={key} onClick={() => updateNoteColor(activeNote.id, key)} title={val.label} className={['w-10 h-10 rounded-xl border-2 transition-all hover:scale-105', activeNote.color === key ? 'scale-105 ring-2 ring-offset-1 ring-offset-transparent' : ''].join(' ')} style={{ background: val.bg, borderColor: val.accent }} />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              <ShortcutManager shortcuts={shortcuts} onUpdateShortcut={updateShortcut} />
+                <ShortcutManager shortcuts={shortcuts} onUpdateShortcut={updateShortcut} />
 
-              {activeNote && (
-                <div className="rounded-2xl border p-4" style={{ background: 'rgba(15, 12, 41, 0.70)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.08)' }}>
-                  <p className="text-[9px] font-semibold text-white/30 uppercase tracking-widest mb-3">Note Stats</p>
-                  <div className="space-y-2">
-                    <StatRow label="Notes" value={notes.length} />
-                    <StatRow label="Snapshots" value={activeNote.snapshots.length} color={colors.accent} />
+                {activeNote && (
+                  <div className="rounded-2xl border p-4" style={{ background: 'rgba(15, 12, 41, 0.70)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.08)' }}>
+                    <p className="text-[9px] font-semibold text-white/30 uppercase tracking-widest mb-3">Note Stats</p>
+                    <div className="space-y-2">
+                      <StatRow label="Notes" value={notes.length} />
+                      <StatRow label="Snapshots" value={activeNote.snapshots.length} color={colors.accent} />
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
+
           </div>
         )}
       </div>
@@ -435,7 +472,7 @@ export default function App() {
         </p>
       </div>
 
-      {/*  FIX: Beautiful Glassmorphic Delete Confirmation Modal */}
+      {/* 🌟 FIX: Updated Modal Text for Soft Delete (Trash) */}
       {noteToDelete && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-[#1a1a2e]/95 border border-red-500/30 rounded-3xl p-6 max-w-[320px] w-full mx-4 shadow-[0_32px_80px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-200">
@@ -444,8 +481,8 @@ export default function App() {
                 <Trash2 className="w-5 h-5 text-red-400" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white tracking-wide">Delete Note?</h3>
-                <p className="text-[11px] text-white/50 mt-0.5">This action cannot be undone.</p>
+                <h3 className="text-sm font-bold text-white tracking-wide">Move to Trash?</h3>
+                <p className="text-[10px] leading-tight text-white/50 mt-1">Note will be kept for 30 days before permanent deletion.</p>
               </div>
             </div>
             
@@ -460,7 +497,7 @@ export default function App() {
                 onClick={() => { deleteNote(noteToDelete); setNoteToDelete(null); }}
                 className="px-4 py-2 rounded-xl text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 hover:shadow-[0_0_15px_rgba(239,68,68,0.3)] transition-all flex items-center gap-1.5 focus:outline-none"
               >
-                Delete <span className="text-[9px] font-mono opacity-60 ml-1">ENTER</span>
+                Move to Trash <span className="text-[9px] font-mono opacity-60 ml-1">ENTER</span>
               </button>
             </div>
           </div>

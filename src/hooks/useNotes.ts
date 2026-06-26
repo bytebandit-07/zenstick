@@ -21,12 +21,12 @@ export function useNotes() {
     const id = generateId();
     const newNote: Note = {
       id, title: 'New Note', color, createdAt: new Date(), updatedAt: new Date(),
-      snapshots: [], currentContent: '', isPinned: false,
+      snapshots: [], currentContent: '', isPinned: false, isTrashed: false, deletedAt: null
     };
     const db = await getDb();
     await db.execute(
-      "INSERT INTO notes (id, title, content, color, is_pinned, snapshots) VALUES ($1, $2, $3, $4, $5, $6)",
-      [id, newNote.title, '', newNote.color, 0, JSON.stringify([])]
+      "INSERT INTO notes (id, title, content, color, is_pinned, is_trashed, snapshots) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+      [id, newNote.title, '', newNote.color, 0, 0, JSON.stringify([])]
     );
     setNotes(prev => [newNote, ...prev]);
     setActiveNoteId(id);
@@ -45,17 +45,32 @@ export function useNotes() {
         )
       `);
 
-      // 🌟 UNIFIED DB FIX: Saare notes load honge, no hiding!
+      // 🌟 FIX: Safe Migration - Add columns if they don't exist in older databases
+      try { await db.execute("ALTER TABLE notes ADD COLUMN is_trashed INTEGER DEFAULT 0"); } catch (e) {}
+      try { await db.execute("ALTER TABLE notes ADD COLUMN deleted_at DATETIME"); } catch (e) {}
+
+      // 🌟 FIX: Auto-Purge Logic - Automatically delete notes trashed more than 30 days ago
+      await db.execute("DELETE FROM notes WHERE is_trashed = 1 AND deleted_at <= datetime('now', '-30 days')");
+
       const result = await db.select<any[]>("SELECT * FROM notes ORDER BY is_pinned DESC, updated_at DESC");
       
       if (result.length > 0) {
         const mapped = result.map(n => ({
           ...n, currentContent: n.content || '', color: n.color || 'violet',
           isPinned: n.is_pinned === 1, updatedAt: new Date(n.updated_at),
-          snapshots: n.snapshots ? JSON.parse(n.snapshots) : []
+          snapshots: n.snapshots ? JSON.parse(n.snapshots) : [],
+          isTrashed: n.is_trashed === 1,
+          deletedAt: n.deleted_at ? new Date(n.deleted_at) : null
         }));
+        
         setNotes(mapped);
-        setActiveNoteId(prev => prev || mapped[0].id);
+        
+        // Only set active note to an UNTRASHED note
+        const firstActive = mapped.find(n => !n.isTrashed);
+        setActiveNoteId(prev => {
+          if (prev && mapped.find(n => n.id === prev && !n.isTrashed)) return prev;
+          return firstActive ? firstActive.id : '';
+        });
       } else {
         await addNote('violet');
       }
@@ -123,24 +138,65 @@ export function useNotes() {
     localStorage.setItem('zenstick_db_sync', Date.now().toString());
   }, [notes]);
 
+  //  FIX: Soft Delete - Moves note to trash instead of permanent deletion
   const deleteNote = useCallback(async (noteId: string) => {
     const db = await getDb();
-    await db.execute("DELETE FROM notes WHERE id = $1", [noteId]);
+    await db.execute("UPDATE notes SET is_trashed = 1, deleted_at = CURRENT_TIMESTAMP WHERE id = $1", [noteId]);
+    
     setNotes(prev => {
-      const filtered = prev.filter(n => n.id !== noteId);
-      if (filtered.length === 0) { addNote('violet'); return []; }
-      if (noteId === activeNoteId) setActiveNoteId(filtered[0].id);
-      return filtered;
+      const updated = prev.map(n => n.id === noteId ? { ...n, isTrashed: true, deletedAt: new Date() } : n);
+      const activeOnly = updated.filter(n => !n.isTrashed);
+      
+      if (activeOnly.length === 0) { addNote('violet'); } 
+      else if (noteId === activeNoteId) setActiveNoteId(activeOnly[0].id);
+      
+      return updated;
     });
     localStorage.setItem('zenstick_db_sync', Date.now().toString());
   }, [activeNoteId, addNote]);
 
-  const activeNote = notes.find(n => n.id === activeNoteId) || notes[0];
+  //  FIX: Restore Note
+  const restoreNote = useCallback(async (noteId: string) => {
+    const db = await getDb();
+    await db.execute("UPDATE notes SET is_trashed = 0, deleted_at = NULL WHERE id = $1", [noteId]);
+    setNotes(prev => prev.map(n => n.id === noteId ? { ...n, isTrashed: false, deletedAt: null } : n));
+    setActiveNoteId(noteId);
+    localStorage.setItem('zenstick_db_sync', Date.now().toString());
+  }, []);
+
+  // FIX: Permanent Delete (Wipes from DB)
+  const permanentDeleteNote = useCallback(async (noteId: string) => {
+    const db = await getDb();
+    await db.execute("DELETE FROM notes WHERE id = $1", [noteId]);
+    setNotes(prev => prev.filter(n => n.id !== noteId));
+    localStorage.setItem('zenstick_db_sync', Date.now().toString());
+  }, []);
+
+  // FIX: Empty Trash (Wipes all trashed notes)
+  const emptyTrash = useCallback(async () => {
+    const db = await getDb();
+    await db.execute("DELETE FROM notes WHERE is_trashed = 1");
+    setNotes(prev => prev.filter(n => !n.isTrashed));
+    localStorage.setItem('zenstick_db_sync', Date.now().toString());
+  }, []);
+
+  // FIX: Separation of Active and Trashed Notes for the UI
+  const activeNotes = notes.filter(n => !n.isTrashed);
+  const trashedNotes = notes.filter(n => n.isTrashed);
+  const activeNote = activeNotes.find(n => n.id === activeNoteId) || activeNotes[0];
 
   return {
-    notes, activeNote, activeNoteId, setActiveNoteId,
+    notes: activeNotes,       // Passes only active notes to main UI
+    trashedNotes,             // New array for Trash UI
+    activeNote, 
+    activeNoteId, 
+    setActiveNoteId,
     updateNoteContent, updateNoteTitle, updateNoteColor,
-    togglePin, addNote, deleteNote,
+    togglePin, addNote, 
+    deleteNote,               // Now acts as "Move to Trash"
+    restoreNote,              // New
+    permanentDeleteNote,      // New
+    emptyTrash,               // New
     restoreSnapshot: (id: string, s: Snapshot) => updateNoteContent(id, s.content),
     deleteSnapshot: (id: string, sId: string) => {
       setNotes(prev => prev.map(n => n.id === id ? { ...n, snapshots: n.snapshots.filter(s => s.id !== sId) } : n));

@@ -6,6 +6,7 @@ export type Shortcuts = {
   sidebar: string;
   widget: string;
   deleteNote: string; //  FIX: New delete shortcut
+  settings: string;
 };
 
 const defaultShortcuts: Shortcuts = {
@@ -14,6 +15,7 @@ const defaultShortcuts: Shortcuts = {
   sidebar: 'Alt+S',
   widget: 'Alt+W',
   deleteNote: 'Alt+D',  
+  settings: 'Alt+P',
 };
 
 export function useShortcuts() {
