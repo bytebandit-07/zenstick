@@ -21,7 +21,7 @@
         "decorations": true,
         "transparent": false,
         "skipTaskbar": false,
-        "shadow": true
+        "shadow": false
       },
       {
         "label": "widget",

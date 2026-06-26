@@ -74,7 +74,8 @@ export default function NotesSidebar({
       </div>
 
       {/* Notes list */}
-      <div className="flex-1 overflow-y-auto pr-1 space-y-1.5 custom-scrollbar">
+      {/* 🌟 FIX: Added min-h-0 to force the flex container to respect bounds and show scrollbar */}
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-1.5 custom-scrollbar">
         {notes.map(note => {
           const colors = NOTE_COLORS[note.color];
           const preview = stripHtml(note.currentContent).slice(0, 80);
@@ -152,7 +153,7 @@ export default function NotesSidebar({
       </div>
 
       {/* Footer */}
-      <div className="mt-3 pt-3 border-t border-white/8">
+      <div className="flex-shrink-0 mt-3 pt-3 border-t border-white/8">
         <p className="text-[10px] text-white/25 text-center">
           <Palette className="w-2.5 h-2.5 inline mr-1" />
           Click + to create a colored note

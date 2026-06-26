@@ -3,7 +3,7 @@ use tauri::{
     tray::{MouseButton, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager,
 };
-use tauri_plugin_window_state::StateFlags; //  new import for window state flags
+use tauri_plugin_window_state::StateFlags;
 
 #[tauri::command]
 fn swap_to_widget(app: AppHandle) -> Result<(), String> {
@@ -42,7 +42,6 @@ fn swap_to_main(app: AppHandle) -> Result<(), String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        //  Window state plugin ko enable karein
         .plugin(
             tauri_plugin_window_state::Builder::default()
                 .with_state_flags(StateFlags::POSITION)
@@ -88,14 +87,11 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            //  WIDGET-ONLY STARTUP LOGIC 
             let args: Vec<String> = std::env::args().collect();
             if args.contains(&"--minimized".to_string()) {
-                // Main window ko hide karein
                 if let Some(main_win) = app.get_webview_window("main") {
                     let _ = main_win.hide();
                 }
-                // Sirf Widget window ko show karein
                 if let Some(widget_win) = app.get_webview_window("widget") {
                     let _ = widget_win.show();
                 }

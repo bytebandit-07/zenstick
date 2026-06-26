@@ -68,7 +68,8 @@ export default function ZenWidget({
       onUpdateContent(newHtml);
     },
     onFocus: () => setToolbarVisible(true),
-    onBlur: () => setTimeout(() => setToolbarVisible(false), 150),
+    // Toolbar ko hide karne ka delay thora barha diya hai taake click karte waqt flickering na ho
+    onBlur: () => setTimeout(() => setToolbarVisible(false), 200),
     editorProps: { attributes: { class: 'tiptap-editor', spellcheck: 'true' } },
   });
 
@@ -97,9 +98,9 @@ export default function ZenWidget({
       const appWindow = getCurrentWebviewWindow();
       if (appWindow.label === 'widget') {
         if (minimize) {
-          await appWindow.setSize(new LogicalSize(350, 60)); // Shrink window to just fit the capsule
+          await appWindow.setSize(new LogicalSize(350, 60));
         } else {
-          await appWindow.setSize(new LogicalSize(350, 500)); // Back to normal size
+          await appWindow.setSize(new LogicalSize(350, 500));
         }
       }
     } catch (e) { console.error("Resize error:", e); }
@@ -109,27 +110,21 @@ export default function ZenWidget({
   
   const containerClass = "w-full h-full flex flex-col";
 
-  // THE NEW MINIMIZED CAPSULE 
   if (isMinimized && isWidgetMode) {
     return (
       <div className="w-full h-full bg-transparent flex items-start p-1">
         <div
-          className="w-full h-[52px] rounded-2xl border shadow-[0_8px_30px_rgb(0,0,0,0.4)] cursor-pointer group flex items-center px-4 transition-all duration-300"
+          className="w-full h-[52px] rounded-2xl border shadow-none cursor-pointer group flex items-center px-4 transition-all duration-300"
           style={{ background: 'rgba(15, 12, 41, 0.95)', backdropFilter: 'blur(24px)', borderColor: colors.border, WebkitAppRegion: 'drag' } as any}
           onClick={() => toggleMinimize(false)}
         >
-          {/* Accent dot */}
           <div 
             className="w-3 h-3 rounded-full flex-shrink-0 mr-3 pointer-events-none transition-transform group-hover:scale-110" 
             style={{ background: colors.accent, boxShadow: `0 0 10px ${colors.accent}40` }} 
           />
-          
-          {/* Note Title */}
           <span className="text-[13px] font-bold text-white/90 flex-1 min-w-0 truncate pointer-events-none tracking-wide">
             {note.title || 'Quick Note'}
           </span>
-          
-          {/* Beautiful Expand Button */}
           <div className="w-8 h-8 flex items-center justify-center flex-shrink-0 rounded-xl bg-white/5 border border-white/10 group-hover:bg-white/15 group-hover:border-white/20 transition-all duration-300 pointer-events-none ml-2">
             <Maximize2 className="w-4 h-4 text-white/50 group-hover:text-white transition-colors" />
           </div>
@@ -138,10 +133,9 @@ export default function ZenWidget({
     );
   }
 
-  // NORMAL EDITOR VIEW
   return (
     <div
-      className={`relative ${containerClass} rounded-2xl border shadow-2xl overflow-hidden transition-all duration-300`}
+      className={`relative ${containerClass} rounded-2xl border ${isDashboard ? 'shadow-2xl' : 'shadow-none'} overflow-hidden transition-all duration-300`}
       style={{ background: `linear-gradient(135deg, ${colors.bg} 0%, rgba(15, 12, 41, 0.85) 100%)`, backdropFilter: 'blur(28px)', borderColor: colors.border }}
     >
       <div
@@ -164,8 +158,10 @@ export default function ZenWidget({
           <div className="flex items-center gap-0.5 flex-shrink-0 relative z-50">
             <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAddNote(); }} className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/10" title="New Note"><Plus className="w-3.5 h-3.5" /></button>
             
-            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onShowNotes(); }} className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/10" title={isDashboard ? "Toggle Sidebar" : "Open Main App"}><StickyNote className="w-3.5 h-3.5" /></button>
-            
+            {isWidgetMode && (
+              <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onShowNotes(); }} className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/10" title="Open Main App"><StickyNote className="w-3.5 h-3.5" /></button>
+            )}
+
             <button onClick={() => setPanel(panel === 'history' ? 'none' : 'history')} className={`w-7 h-7 flex items-center justify-center rounded-md transition-all ${panel === 'history' ? 'text-violet-300 bg-violet-500/25' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`} title="Version history"><Clock className="w-3.5 h-3.5" /></button>
             
             <div className="relative">
@@ -194,10 +190,28 @@ export default function ZenWidget({
           </div>
         ) : (
           <div className="flex-1 flex flex-col min-h-0 w-full h-full">
-            <div className={`flex-shrink-0 pt-3 pb-1 transition-all px-4 ${toolbarVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-              <EditorToolbar editor={editor} />
+            {/* 🌟 FIX: CSS Grid lagaya hai taake toolbar smoothly 0 height par collapse ho jaye */}
+            <div 
+              className="transition-all duration-300 ease-in-out grid flex-shrink-0"
+              style={{
+                gridTemplateRows: toolbarVisible ? '1fr' : '0fr',
+                opacity: toolbarVisible ? 1 : 0,
+                paddingTop: toolbarVisible ? '12px' : '0px',
+                paddingBottom: toolbarVisible ? '4px' : '0px',
+                paddingLeft: '16px',
+                paddingRight: '16px'
+              }}
+            >
+              <div className="overflow-hidden">
+                <EditorToolbar editor={editor} />
+              </div>
             </div>
-            <div className={`flex-1 overflow-y-auto tiptap-editor flex flex-col min-h-0 px-4 pb-4`} onClick={(e) => { if (e.target === e.currentTarget) editor?.commands.focus(); }}>
+            
+            {/* Editor Text Area */}
+            <div 
+              className="flex-1 overflow-y-auto tiptap-editor flex flex-col min-h-0 px-4 pb-4 pt-2" 
+              onClick={(e) => { if (e.target === e.currentTarget) editor?.commands.focus(); }}
+            >
               <EditorContent editor={editor} className="flex-1 w-full h-full min-h-0" />
             </div>
           </div>

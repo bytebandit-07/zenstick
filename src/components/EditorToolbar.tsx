@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Editor } from '@tiptap/react';
 import {
   Bold, Italic, List, ListOrdered, CheckSquare,
@@ -16,7 +16,12 @@ interface ToolbarButtonProps {
 function ToolbarButton({ onClick, active, disabled, tip, children }: ToolbarButtonProps) {
   return (
     <button
-      onMouseDown={e => { e.preventDefault(); onClick(); }}
+      // 🌟 FIX: Added onMouseDown with preventDefault back! 
+      // Yeh button ko focus churanay se rokta hai taake text selection barkarar rahe.
+      onMouseDown={(e) => {
+        e.preventDefault();
+        onClick();
+      }}
       disabled={disabled}
       title={tip}
       className={[
@@ -43,20 +48,26 @@ interface EditorToolbarProps {
 export default function EditorToolbar({ editor }: EditorToolbarProps) {
   if (!editor) return null;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const cmd = editor.chain().focus() as any;
+  // 🌟 FIX: Advanced command runner jo proper chain banata hai
+  const runCommand = useCallback((commandFn: (chain: ReturnType<Editor['chain']>) => void) => {
+    const chain = editor.chain();
+    commandFn(chain);
+    chain.focus().run();
+  }, [editor]);
 
   return (
     <div className="flex items-center gap-0.5 flex-wrap">
       {/* History */}
       <ToolbarButton
-        onClick={() => cmd.undo().run()}
+        onClick={() => runCommand(c => c.undo())}
+        disabled={!editor.can().undo()}
         tip="Undo (Ctrl+Z)"
       >
         <Undo2 className="w-3.5 h-3.5" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => cmd.redo().run()}
+        onClick={() => runCommand(c => c.redo())}
+        disabled={!editor.can().redo()}
         tip="Redo (Ctrl+Y)"
       >
         <Redo2 className="w-3.5 h-3.5" />
@@ -66,14 +77,14 @@ export default function EditorToolbar({ editor }: EditorToolbarProps) {
 
       {/* Headings */}
       <ToolbarButton
-        onClick={() => cmd.toggleHeading({ level: 1 }).run()}
+        onClick={() => runCommand(c => c.toggleHeading({ level: 1 }))}
         active={editor.isActive('heading', { level: 1 })}
         tip="Heading 1"
       >
         <Heading1 className="w-3.5 h-3.5" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => cmd.toggleHeading({ level: 2 }).run()}
+        onClick={() => runCommand(c => c.toggleHeading({ level: 2 }))}
         active={editor.isActive('heading', { level: 2 })}
         tip="Heading 2"
       >
@@ -84,21 +95,21 @@ export default function EditorToolbar({ editor }: EditorToolbarProps) {
 
       {/* Text formatting */}
       <ToolbarButton
-        onClick={() => cmd.toggleBold().run()}
+        onClick={() => runCommand(c => c.toggleBold())}
         active={editor.isActive('bold')}
         tip="Bold (Ctrl+B)"
       >
         <Bold className="w-3.5 h-3.5" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => cmd.toggleItalic().run()}
+        onClick={() => runCommand(c => c.toggleItalic())}
         active={editor.isActive('italic')}
         tip="Italic (Ctrl+I)"
       >
         <Italic className="w-3.5 h-3.5" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => cmd.toggleCode().run()}
+        onClick={() => runCommand(c => c.toggleCode())}
         active={editor.isActive('code')}
         tip="Inline Code"
       >
@@ -109,21 +120,21 @@ export default function EditorToolbar({ editor }: EditorToolbarProps) {
 
       {/* Lists */}
       <ToolbarButton
-        onClick={() => cmd.toggleBulletList().run()}
+        onClick={() => runCommand(c => c.toggleBulletList())}
         active={editor.isActive('bulletList')}
         tip="Bullet List"
       >
         <List className="w-3.5 h-3.5" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => cmd.toggleOrderedList().run()}
+        onClick={() => runCommand(c => c.toggleOrderedList())}
         active={editor.isActive('orderedList')}
         tip="Numbered List"
       >
         <ListOrdered className="w-3.5 h-3.5" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => cmd.toggleTaskList().run()}
+        onClick={() => runCommand(c => c.toggleTaskList())}
         active={editor.isActive('taskList')}
         tip="Checklist"
       >
@@ -134,7 +145,7 @@ export default function EditorToolbar({ editor }: EditorToolbarProps) {
 
       {/* Blockquote */}
       <ToolbarButton
-        onClick={() => cmd.toggleBlockquote().run()}
+        onClick={() => runCommand(c => c.toggleBlockquote())}
         active={editor.isActive('blockquote')}
         tip="Quote Block"
       >

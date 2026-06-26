@@ -48,7 +48,8 @@ export default function StandaloneWidget(props: StandaloneWidgetProps) {
 
   return (
     <div className="w-full h-full overflow-hidden bg-transparent">
-      <ZenWidget {...props} />
+      {/*  FIX: Added key prop so editor completely resets on new note */}
+      <ZenWidget key={props.note.id} {...props} />
     </div>
   );
 }

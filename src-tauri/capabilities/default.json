@@ -11,6 +11,8 @@
     "sql:default",
     "sql:allow-load",
     "sql:allow-execute",
-    "window-state:default"
+    "window-state:default",
+    "core:window:allow-set-size",
+    "core:window:allow-set-position"
   ]
 }

@@ -28,7 +28,6 @@ export default function App() {
   const [windowLabel, setWindowLabel] = useState<string>('');
   const isIncomingSyncRef = useRef(false);
 
-  // 🌟 USER NAME STATE MANAGEMENT
   const [userName, setUserName] = useState<string>(() => {
     return localStorage.getItem('zenstick:user_name') || '';
   });
@@ -38,7 +37,6 @@ export default function App() {
     localStorage.setItem('zenstick:user_name', newName);
   };
 
-  // TUTORIAL STATE MANAGEMENT
   const [runTour, setRunTour] = useState(false);
   const [tourKey, setTourKey] = useState(0);
 
@@ -82,13 +80,11 @@ export default function App() {
     };
   }, []);
 
-  // 🌟 FIXED: Non-blocking Tutorial Trigger (Only fires strictly once)
   useEffect(() => {
     if (windowLabel === '' || windowLabel === 'widget') return;
 
     const hasSeenTutorial = localStorage.getItem('zenstick:tutorial_seen');
     if (!hasSeenTutorial) {
-      // FIX: Mark true immediately before timeout starts
       localStorage.setItem('zenstick:tutorial_seen', 'true');
       
       const timer = setTimeout(() => {
@@ -232,8 +228,9 @@ export default function App() {
     );
   }
 
-  return (
-    <div className="wallpaper-bg min-h-screen w-full overflow-hidden relative flex flex-col">
+ return (
+    //  FIX: Changed 'min-h-screen' to 'h-screen' to lock the app height and force the sidebar to scroll!
+    <div className="wallpaper-bg h-screen w-full overflow-hidden relative flex flex-col">
       <TutorialTour key={tourKey} run={runTour} onTourEnd={handleTourEnd} />
 
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -243,8 +240,8 @@ export default function App() {
 
       <div className="flex-shrink-0 relative z-10 flex items-center justify-between px-6 pt-5 pb-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center border" style={{ background: colors.bg, borderColor: colors.border }}>
-            <StickyNote className="w-4 h-4" style={{ color: colors.accent }} />
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center border overflow-hidden" style={{ background: colors.bg, borderColor: colors.border }}>
+            <img src="/logo.png" alt="ZenStick Logo" className="w-full h-full object-contain p-0.5" />
           </div>
           <div>
             <span className="text-sm font-bold text-white tracking-tight">ZenStick</span>
@@ -455,4 +452,4 @@ function StatRow({ label, value, color }: { label: string; value: string | numbe
       </span>
     </div>
   );
-} 
+}

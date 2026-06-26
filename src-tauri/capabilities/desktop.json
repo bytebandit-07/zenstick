@@ -15,14 +15,12 @@
     "core:default",
     "core:event:default",
     "core:webview:default",
-    "core:window:allow-hide",
-    "core:window:allow-show",
     "core:window:allow-set-focus",
-    
+    "core:window:allow-set-size",
+    "core:window:allow-set-position",
     "sql:default",
     "sql:allow-execute",
     "sql:allow-select",
-    
     "autostart:default"
   ]
 }
