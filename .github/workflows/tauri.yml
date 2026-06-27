@@ -24,7 +24,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Setup Rust
@@ -62,4 +62,5 @@ jobs:
           releaseBody: 'See assets below to download and install.'
           releaseDraft: true
           prerelease: false
+          tauriScript: npx tauri
           args: ${{ matrix.args }}
