@@ -38,7 +38,11 @@ Zenstick is built for the keyboard.
 ## 🚀 Getting Started (Local Development)
 
 ### Prerequisites
-Make sure you have [Node.js](https://nodejs.org/) and [Rust](https://www.rust-lang.org/) installed on your machine.
+Before you begin, ensure you have the following installed on your system:
+1. [Node.js](https://nodejs.org/) (v16 or higher)
+2. [Rust](https://www.rust-lang.org/)
+3. **Tauri OS Dependencies:** Tauri requires specific system-level build tools to compile the desktop app (e.g., C++ Build Tools on Windows). 
+   👉 **[Click here to see the Official Tauri Prerequisites for your OS](https://v2.tauri.app/start/prerequisites/)**
 
 ### Installation
 1. Clone the repository:
