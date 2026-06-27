@@ -52,6 +52,7 @@ Before you begin, ensure you have the following installed on your system:
 
 2. **Install dependencies:**
    ```bash
+   cd zenstick
    npm install
 
 4. **Run in Development Mode:**
