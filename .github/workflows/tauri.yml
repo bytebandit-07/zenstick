@@ -62,5 +62,5 @@ jobs:
           releaseBody: 'See assets below to download and install.'
           releaseDraft: true
           prerelease: false
-          tauriScript: npx tauri
+          tauriScript: npx @tauri-apps/cli
           args: ${{ matrix.args }}
