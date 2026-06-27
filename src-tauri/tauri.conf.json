@@ -41,6 +41,7 @@
     ],
     "security": {
       "capabilities": [
+        "default",
         "desktop-capability"
       ]
     }
