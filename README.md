@@ -1,4 +1,4 @@
-<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/d26daaad-c77f-4acb-87a1-1d8fc1d8d584" /><img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/b27f6c1f-4c41-4c05-8150-4b707cf49d51" /># 🪄 Zenstick: Your Mind, Glassmorphed.
+# 🪄 Zenstick: Your Mind, Glassmorphed.
 
 [![Tauri](https://img.shields.io/badge/Tauri-v2-blue?logo=tauri)](#)
 [![React](https://img.shields.io/badge/React-18-61dafb?logo=react)](#)
