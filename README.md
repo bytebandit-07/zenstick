@@ -1,61 +1,46 @@
-# 🌟 ZenStick - The Glassmorphic Floating Notes App
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/d26daaad-c77f-4acb-87a1-1d8fc1d8d584" /><img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/b27f6c1f-4c41-4c05-8150-4b707cf49d51" /># 🪄 Zenstick: Your Mind, Glassmorphed.
 
-<div align="center">
-  <img src="<img width="1919" height="1079" alt="Screenshot 2026-06-25 122726" src="https://github.com/user-attachments/assets/19b73a73-1dba-4808-831e-f1378f06acf0" />
-" alt="ZenStick Main Dashboard" width="800"/>
-</div>
+[![Tauri](https://img.shields.io/badge/Tauri-v2-blue?logo=tauri)](#)
+[![React](https://img.shields.io/badge/React-18-61dafb?logo=react)](#)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](#)
 
-<br />
+*A blazingly fast, beautifully crafted local desktop notes app that respects your focus.*
 
-> **A blazing-fast, lightweight desktop notes application featuring a transparent floating widget, built to boost productivity without cluttering your workspace.**
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/f86e5069-64bb-45eb-9964-9990e9a0e10d" />
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/eabcad5a-0fea-40e9-88f6-8649a7afdb87" />
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/cbb53894-e92c-496f-9c33-9a8b54569bf7" />
 
-## 🎓 About The Project
 
-ZenStick is a passion project built during my Computer Science degree to solve a personal friction point: wanting a sticky note that stays on top of my windows without looking ugly. 
 
-I wanted to move away from bulky Electron apps and explore native OS performance. By leveraging **Tauri v2** and **Rust**, ZenStick achieves a minimal memory footprint while delivering a premium, glassmorphic UI using React and Tailwind CSS. 
 
-### ✨ Key Features
-* **Floating Transparent Widget:** A dedicated widget window that stays precisely where you leave it, remembering its native OS coordinates.
-* **Smart Dashboard:** Time-based personalized greetings and at-a-glance workspace statistics.
-* **Blazing Fast Local Storage:** Zero cloud lag. Your notes and snapshots are saved instantly to your local machine.
-* **Glassmorphic UI:** A beautiful, distraction-free interface with customizable note colors and smooth animations.
-* **Interactive Guide:** Built-in tutorial tour for seamless onboarding.
 
----
+## ⚡ The Vision
+Modern note-taking apps are bloated, slow, and live on the cloud. I wanted a space that feels personal, opens instantly, and stays out of the way. Zenstick combines native desktop performance with a stunning glassmorphic UI, strictly keeping your data stored locally on your machine.
 
-## 🛠️ Tech Stack
+## ✨ Core Features
+*   **Glassmorphic Design:** A translucent, blur-heavy aesthetic that blends with your desktop.
+*   **Native Performance:** Powered by Tauri (Rust core) for minimal RAM footprint and instant startup.
+*   **Local First:** No accounts, no cloud syncs. Your data stays on your hard drive (SQLite).
+*   **Smart Utility Panels:** Fully collapsible sidebars for a 100% distraction-free "Zen" mode.
+*   **Built-in Markdown Export:** Convert your thoughts to clean `.md` files in a single click.
+*   **Time-Travel History:** Every change is snapshotted. Never lose a thought again.
 
-This project was a deep dive into modern desktop app architecture:
-* **Frontend:** React (TypeScript), Vite, Tailwind CSS, Lucide Icons
-* **Backend / Desktop Engine:** Tauri v2, Rust
-* **Window Management:** `tauri-plugin-window-state` (Native OS positioning)
+## ⌨️ Power-User Shortcuts
+Zenstick is built for the keyboard.
 
----
+| Action | Shortcut |
+| :--- | :--- |
+| **New Note** | `Alt + N` |
+| **Toggle Settings Panel** | `Alt + P` |
+| **Move to Trash** | `Alt + D` |
+| **Search Notes** | `Alt + F` |
 
-## 📸 Sneak Peek
+## 🚀 Getting Started (Local Development)
 
-### The Workspace
-<img src="<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/385ea3f8-28bf-4143-b094-2a796a51a533" />
-" alt="Editor View" width="800"/>
+### Prerequisites
+Make sure you have [Node.js](https://nodejs.org/) and [Rust](https://www.rust-lang.org/) installed on your machine.
 
-### The Floating Widget in Action
-*(Add a GIF here showing the widget moving around the screen)*
-<img src="
-" alt="Floating Widget" width="800"/>
-
----
-## 📥 Download & Install
-
-**Don't want to mess with code?** Simply download the ready-to-use Windows installer!
-1. Go to the [Releases page](../../releases/latest).
-2. Download `ZenStick_x64-setup.exe`.
-3. Install and enjoy!
-
-## 💻 For Developers (Run Locally)
-
-If you want to view the source code or run it locally, make sure you have Node.js and Rust installed on your machine.
-
+### Installation
 1. **Clone the repo:**
    ```bash
    git clone [https://github.com/bytebandit-07/zenstick.git](https://github.com/bytebandit-07/zenstick.git)
