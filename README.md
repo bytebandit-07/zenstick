@@ -41,9 +41,10 @@ Zenstick is built for the keyboard.
 Make sure you have [Node.js](https://nodejs.org/) and [Rust](https://www.rust-lang.org/) installed on your machine.
 
 ### Installation
-1. **Clone the repo:**
+1. Clone the repository:
    ```bash
-   git clone [https://github.com/bytebandit-07/zenstick.git](https://github.com/bytebandit-07/zenstick.git)
+   git clone https://github.com/bytebandit-07/zenstick.git
+   ```
 
 2. **Install dependencies:**
    ```bash
